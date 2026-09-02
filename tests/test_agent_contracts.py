@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import inspect
 import json
 from pathlib import Path
 
 from gallica import Corpus, Document, Gallica, Page, Periodical
 from gallica.agent import capabilities
+
+PUBLIC_CLASSES = {
+    "Gallica": Gallica,
+    "Document": Document,
+    "Page": Page,
+    "Periodical": Periodical,
+    "Corpus": Corpus,
+}
 
 
 def test_capabilities_are_unique_json_serializable_and_exposed() -> None:
@@ -17,17 +26,31 @@ def test_capabilities_are_unique_json_serializable_and_exposed() -> None:
 
 
 def test_declared_calls_exist_on_public_classes() -> None:
-    classes = {
-        "Gallica": Gallica,
-        "Document": Document,
-        "Page": Page,
-        "Periodical": Periodical,
-        "Corpus": Corpus,
-    }
     for spec in capabilities():
         class_name, method_name = spec["call"].split(".", 1)
-        assert class_name in classes
-        assert hasattr(classes[class_name], method_name), spec["call"]
+        assert class_name in PUBLIC_CLASSES
+        assert hasattr(PUBLIC_CLASSES[class_name], method_name), spec["call"]
+
+
+def test_declared_parameters_match_public_signatures() -> None:
+    for spec in capabilities():
+        class_name, method_name = spec["call"].split(".", 1)
+        method = getattr(PUBLIC_CLASSES[class_name], method_name)
+        signature = inspect.signature(method)
+        actual_names = {
+            name
+            for name in signature.parameters
+            if name not in {"self", "cls"}
+        }
+        declared_names = {parameter["name"] for parameter in spec["parameters"]}
+        assert declared_names == actual_names, spec["call"]
+
+
+def test_object_construction_is_part_of_the_contract() -> None:
+    by_id = {spec["id"]: spec for spec in capabilities()}
+    assert by_id["document"]["call"] == "Gallica.document"
+    assert by_id["periodical"]["call"] == "Gallica.periodical"
+    assert by_id["corpus"]["call"] == "Gallica.corpus"
 
 
 def test_required_agent_safeguards_are_machine_readable() -> None:
