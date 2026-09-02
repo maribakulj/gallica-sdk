@@ -1,19 +1,19 @@
 # Matrice de capacités
 
-Cette matrice décrit le périmètre public visé par le SDK. Elle distingue les capacités connues des capacités effectivement livrées dans le vertical slice initial.
+Cette matrice décrit le périmètre public visé par le SDK et distingue les capacités connues des capacités effectivement livrées.
 
-| Capacité | Service Gallica | Entrée principale | Sortie native | Contrainte connue | 0.1 initiale |
+| Capacité | Service Gallica | Entrée principale | Sortie native | Contrainte connue | Statut |
 |---|---|---|---|---|---|
-| Recherche bibliographique | SRU 1.2 | requête CQL | XML | `maximumRecords <= 50` | oui |
-| Métadonnées document | `services/OAIRecord` | ARK | XML | structure historique Gallica | oui |
-| Pagination / nombre de vues | `services/Pagination` | ARK | XML | `nbVueImages` est la source attendue | oui |
-| Résolution d'un numéro de périodique | `services/Issues` | ARK + date | XML | `dayOfYear` structuré | après vertical slice |
-| Recherche dans OCR | `services/ContentSearch` | ARK + requête | XML | pagination `startResult` | après vertical slice |
-| OCR texte brut | `.texteBrut` | ARK / plage de vues | texte | quota public documenté : 5/min | après vertical slice |
-| OCR ALTO | `RequestDigitalElement` | ARK + vue | XML ALTO | vue obligatoire | oui |
-| Informations IIIF | IIIF `info.json` | ARK + vue | JSON | endpoint Image distinct de Presentation | oui |
-| Image IIIF | IIIF Image | ARK + vue | image | `/full/full/` ou largeur >1000 px : classe HD ; quota public documenté | oui, largeur prudente par défaut |
-| PDF | `.pdf` | ARK / plage | PDF | quota public documenté : 4/min | après vertical slice |
+| Recherche bibliographique | SRU 1.2 | requête CQL | XML | `maximumRecords <= 50` | supportée |
+| Métadonnées document | `services/OAIRecord` | ARK | XML | structure historique Gallica | supportée |
+| Pagination / nombre de vues | `services/Pagination` | ARK | XML | `nbVueImages` est la source attendue | supportée |
+| Résolution d'un numéro de périodique | `services/Issues` | ARK + date | XML | `dayOfYear` structuré | supportée |
+| Recherche dans OCR | `services/ContentSearch` | ARK + requête | XML | pagination `startResult` | supportée |
+| OCR texte brut | `.texteBrut` | ARK / plage de vues | texte | quota public documenté : 5/min | supportée |
+| OCR ALTO | `RequestDigitalElement` | ARK + vue | XML ALTO | vue obligatoire | supportée |
+| Informations IIIF | IIIF `info.json` | ARK + vue | JSON | endpoint Image distinct de Presentation | supportée |
+| Image IIIF | IIIF Image | ARK + vue | image | `/full/full/` ou largeur >1000 px : classe HD ; quota public documenté | supportée, largeur prudente par défaut |
+| PDF | `.pdf` | ARK / plage | PDF | quota public documenté : 4/min | supportée |
 | Corpus / reprise | composition SDK | liste d'ARK | manifest + fichiers | doit respecter les quotas de toutes les primitives | 0.2 cible |
 
 ## Règle de statut
@@ -24,6 +24,14 @@ Une ligne ne doit pas être annoncée comme « supportée » dans la documentati
 2. une réponse simulée couvrant le parsing ou la valeur retournée ;
 3. un smoke test live depuis un réseau public ;
 4. une documentation de la contrainte de quota lorsqu'elle existe.
+
+## Choix d'interface Phase 1
+
+- `Document.text()` expose `.texteBrut` au niveau document.
+- `Page.text()` demande exactement une vue via `.texteBrut`.
+- `Document.search_text()` expose `ContentSearch` sans inventer encore de modèle de résultat.
+- `Gallica.periodical(ark).issue(date)` formalise uniquement la résolution datée déjà portée par `Issues`; le résultat est un `Document` normal.
+- `Document.pdf()` permet le document entier ou une plage bornée de vues et utilise un bucket réseau séparé adapté au quota PDF.
 
 ## Sources de travail
 
