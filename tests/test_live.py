@@ -73,3 +73,32 @@ def test_public_gallica_corpus_v1(tmp_path: Path) -> None:
         second = corpus.fetch(tmp_path, metadata=True, text=True, resume=True)
         assert len(second.skipped) == 1
         assert len((tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_public_gallica_corpus_page_artifacts(tmp_path: Path) -> None:
+    with Gallica() as gallica:
+        corpus = gallica.corpus(["bpt6k5619759j"])
+        report = corpus.fetch(
+            tmp_path,
+            metadata=False,
+            alto=True,
+            images=True,
+            views=[3],
+            image_width=800,
+            resume=True,
+        )
+        assert len(report.successes) == 1
+        page_dir = tmp_path / "documents" / "bpt6k5619759j" / "pages" / "3"
+        assert len((page_dir / "alto.xml").read_bytes()) > 1000
+        assert len((page_dir / "image.jpg").read_bytes()) > 1000
+
+        second = corpus.fetch(
+            tmp_path,
+            metadata=False,
+            alto=True,
+            images=True,
+            views=[3],
+            image_width=800,
+            resume=True,
+        )
+        assert len(second.skipped) == 1
