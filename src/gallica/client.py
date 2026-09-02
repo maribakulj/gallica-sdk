@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from datetime import date, timedelta
 from typing import Self, cast
 from urllib.parse import quote
@@ -12,7 +12,7 @@ from .agent import capabilities as capability_contracts
 from .ark import ark_uri, normalize_ark
 from .corpus import Corpus
 from .document import Document
-from .models import ContentSearchResults, DocumentMetadata, SearchResults
+from .models import ContentSearchResults, DocumentMetadata, DublinCoreRecord, SearchResults
 from .parsing import parse_content_search, parse_oai_record, parse_sru
 from .periodical import Periodical
 from .transport import Transport
@@ -56,7 +56,7 @@ class Gallica:
         start_record: int = 1,
         maximum_records: int = 50,
     ) -> SearchResults:
-        """Search Gallica through SRU 1.2 and return typed Dublin Core records."""
+        """Search Gallica through SRU 1.2 and return one page of typed records."""
         if start_record < 1:
             raise ValueError("start_record must be >= 1")
         if not 1 <= maximum_records <= 50:
@@ -72,6 +72,41 @@ class Gallica:
             },
         )
         return parse_sru(response.text, fallback_query=query)
+
+    def search_all(
+        self,
+        query: str,
+        *,
+        limit: int | None = None,
+        page_size: int = 50,
+    ) -> Iterator[DublinCoreRecord]:
+        """Iterate over SRU results while handling pagination lazily."""
+        if limit is not None and limit < 1:
+            raise ValueError("limit must be >= 1 when supplied")
+        if not 1 <= page_size <= 50:
+            raise ValueError("page_size must be between 1 and 50")
+
+        yielded = 0
+        start_record = 1
+        while True:
+            requested = page_size if limit is None else min(page_size, limit - yielded)
+            if requested <= 0:
+                return
+            page = self.search(
+                query,
+                start_record=start_record,
+                maximum_records=requested,
+            )
+            if not page.records:
+                return
+            for record in page.records:
+                yield record
+                yielded += 1
+                if limit is not None and yielded >= limit:
+                    return
+            start_record += len(page.records)
+            if start_record > page.total:
+                return
 
     def _metadata(self, ark: str) -> DocumentMetadata:
         normalized = normalize_ark(ark)
