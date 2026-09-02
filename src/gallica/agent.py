@@ -23,6 +23,33 @@ class CapabilitySpec(TypedDict):
 
 CAPABILITIES: tuple[CapabilitySpec, ...] = (
     {
+        "id": "document",
+        "call": "Gallica.document",
+        "description": "Create a normalized document handle for a Gallica ARK.",
+        "returns": "Document",
+        "network_service": "none; local handle construction",
+        "parameters": ({"name": "ark", "type": "str", "required": True},),
+        "constraints": ("accepts bare identifiers, ark:/12148/... and canonical Gallica URLs",),
+    },
+    {
+        "id": "periodical",
+        "call": "Gallica.periodical",
+        "description": "Create a periodical handle used to resolve dated issues.",
+        "returns": "Periodical",
+        "network_service": "none; local handle construction",
+        "parameters": ({"name": "ark", "type": "str", "required": True},),
+        "constraints": ("the ARK is normalized before use",),
+    },
+    {
+        "id": "corpus",
+        "call": "Gallica.corpus",
+        "description": "Create an ordered, deduplicated corpus from Gallica ARKs.",
+        "returns": "Corpus",
+        "network_service": "none; local corpus construction",
+        "parameters": ({"name": "arks", "type": "Iterable[str]", "required": True},),
+        "constraints": ("ARKs are normalized and deduplicated while preserving first-seen order",),
+    },
+    {
         "id": "search",
         "call": "Gallica.search",
         "description": "Search Gallica through SRU 1.2 and return typed Dublin Core records.",
