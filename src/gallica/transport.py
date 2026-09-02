@@ -26,7 +26,7 @@ class Transport:
             timeout=timeout,
             follow_redirects=True,
             headers={
-                "User-Agent": "gallica-sdk/0.1.0.dev0 (+https://github.com/maribakulj/gallica-sdk)",
+                "User-Agent": "gallica-sdk/0.2.0.dev0 (+https://github.com/maribakulj/gallica-sdk)",
                 "Accept": "*/*",
             },
         )
@@ -36,7 +36,6 @@ class Transport:
             or {
                 "default": 0.0,
                 "text": 12.5,
-                "pdf": 15.5,
                 "iiif_hd": 12.5,
             }
         )
