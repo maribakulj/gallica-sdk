@@ -39,10 +39,6 @@ class Document:
             start_result=start_result,
         )
 
-    def pdf(self, *, start_view: int | None = None, nviews: int | None = None) -> bytes:
-        """Return a PDF for the whole document or a bounded view range."""
-        return self._gallica._pdf(self.ark, start_view=start_view, nviews=nviews)
-
     def page(self, number: int) -> Page:
         if number < 1:
             raise ValueError("page number must be >= 1")
@@ -62,6 +58,10 @@ class Page:
     def alto(self) -> bytes:
         """Return the raw ALTO XML bytes for this view."""
         return self._gallica._alto(self.ark, self.number)
+
+    def pdf(self) -> bytes:
+        """Return this single Gallica view as a PDF."""
+        return self._gallica._page_pdf(self.ark, self.number)
 
     def iiif_info(self) -> dict[str, object]:
         """Return the IIIF Image API info.json object for this view."""
