@@ -6,9 +6,9 @@ Le projet ne crée pas une nouvelle API réseau. Il fournit une façade Python m
 
 ## Statut
 
-**0.1.0.dev0 — Phase 0 / vertical slice initial.**
+**0.1.0.dev0 — Phase 1 / accès documentaire.**
 
-Le périmètre initial volontairement réduit sert à valider l'architecture avant d'ajouter texte brut, PDF, périodiques, recherche dans OCR et outils de corpus.
+Le SDK couvre maintenant recherche SRU, métadonnées, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR, résolution de numéros de périodiques et PDF. Les outils de corpus restent volontairement différés jusqu'à stabilisation complète de ces primitives.
 
 ## Installation de développement
 
@@ -20,7 +20,7 @@ python -m pip install -e '.[dev]'
 
 Python 3.11+ est requis.
 
-## Premier usage
+## Usage documentaire
 
 ```python
 from gallica import Gallica
@@ -37,6 +37,33 @@ with Gallica() as g:
     image = page.image(width=1000)
 ```
 
+Texte, recherche OCR et PDF :
+
+```python
+from gallica import Gallica
+
+with Gallica() as g:
+    doc = g.document("bpt6k5460422k")
+
+    text = doc.text()
+    first_page_text = doc.page(1).text()
+    matches_xml = doc.search_text("hugo", start_result=1)
+
+    pdf = doc.pdf(start_view=1, nviews=5)
+```
+
+Périodiques :
+
+```python
+from datetime import date
+from gallica import Gallica
+
+with Gallica() as g:
+    issue = g.periodical("cb32798952c").issue(date(1937, 3, 25))
+    if issue is not None:
+        print(issue.ark)
+```
+
 Recherche SRU :
 
 ```python
@@ -46,22 +73,30 @@ with Gallica() as g:
     xml = g.search('gallica all "Verdun"', maximum_records=10)
 ```
 
-Le SRU et OAIRecord retournent encore volontairement leur XML brut dans ce vertical slice. Les modèles structurés ne seront ajoutés qu'après cartographie des formes de réponses réelles afin de ne pas figer trop tôt une abstraction incorrecte.
+Le SRU, OAIRecord et ContentSearch retournent encore volontairement leur XML brut. Les modèles structurés ne seront ajoutés qu'après cartographie suffisante des formes de réponses réelles afin de ne pas figer trop tôt une abstraction incorrecte.
 
-## Surface publique initiale
+## Surface publique actuelle
 
 ```text
 Gallica.search()
 Gallica.document()
+Gallica.periodical()
 Document.metadata()
 Document.page_count()
+Document.text()
+Document.search_text()
+Document.pdf()
 Document.page()
+Page.text()
 Page.alto()
 Page.iiif_info()
 Page.image()
+Periodical.issue()
 ```
 
 `Page.image()` utilise une largeur prudente de 1000 px par défaut. Les requêtes de largeur supérieure à 1000 px sont classées dans le bucket haute définition et limitées par le transport.
+
+Les appels `.texteBrut` utilisent un bucket de 12,5 secondes et les PDF un bucket de 15,5 secondes, afin de rester sous les quotas publics documentés de 5/minute et 4/minute. Les réponses 429 et erreurs serveur transitoires sont retentées de manière bornée et `Retry-After` est respecté lorsqu'il est numérique.
 
 ## Tests
 
@@ -84,17 +119,14 @@ Une primitive réseau n'est considérée supportée que si sa requête, son comp
 ## Architecture et périmètre
 
 - [`docs/architecture.md`](docs/architecture.md) : mission, principes, non-objectifs et architecture initiale.
-- [`docs/capabilities.md`](docs/capabilities.md) : matrice des API Gallica connues, contraintes et ordre d'intégration.
+- [`docs/capabilities.md`](docs/capabilities.md) : matrice des API Gallica connues, contraintes et statut d'intégration.
 
 Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage sur les wrappers historiques et leurs défauts. `gallica-sdk` n'en dépend pas et ne reprend pas son architecture legacy.
 
 ## Pas encore dans la 0.1
 
-- `.texteBrut` ;
-- PDF ;
-- Issues / périodiques ;
-- ContentSearch ;
-- outils de corpus ;
+- modèles structurés SRU/OAIRecord/ContentSearch ;
+- outils de corpus et reprise ;
 - DataFrame / Parquet ;
 - CLI ;
 - MCP ;
