@@ -13,8 +13,7 @@ Cette matrice décrit le périmètre public visé par le SDK et distingue les ca
 | OCR ALTO | `RequestDigitalElement` | ARK + vue | XML ALTO | vue obligatoire | supportée |
 | Informations IIIF | IIIF `info.json` | ARK + vue | JSON | endpoint Image distinct de Presentation | supportée |
 | Image IIIF | IIIF Image | ARK + vue | image | `/full/full/` ou largeur >1000 px : classe HD ; quota public documenté | supportée, largeur prudente par défaut |
-| PDF d'une vue | qualifier `fN.pdf` | ARK + vue | PDF | quota public documenté : 4/min | supportée |
-| PDF multi-vues / document complet | qualifier historique `.pdf` / `fNnM.pdf` | ARK / plage | PDF ou comportement intermédiaire | `f1n1.pdf` a renvoyé une page HTML lors du smoke test du 2026-09-02 | non annoncé comme supporté |
+| PDF automatisé | représentation `.pdf` / qualifiers historiques | ARK / vue / plage | PDF attendu historiquement | quota public documenté : 4/min ; comportement automatisé à caractériser | non supportée pour l'instant |
 | Corpus / reprise | composition SDK | liste d'ARK | manifest + fichiers | doit respecter les quotas de toutes les primitives | 0.2 cible |
 
 ## Règle de statut
@@ -32,7 +31,15 @@ Une ligne ne doit pas être annoncée comme « supportée » dans la documentati
 - `Page.text()` demande exactement une vue via `.texteBrut`.
 - `Document.search_text()` expose `ContentSearch` sans inventer encore de modèle de résultat.
 - `Gallica.periodical(ark).issue(date)` formalise uniquement la résolution datée déjà portée par `Issues`; le résultat est un `Document` normal.
-- `Page.pdf()` expose uniquement la forme `fN.pdf` observée comme réellement binaire. Le téléchargement PDF multi-vues ou complet reste volontairement hors contrat tant que son comportement public actuel n'est pas établi de façon reproductible.
+
+## PDF : résultat de la validation
+
+Le PDF n'est volontairement pas exposé dans la surface publique actuelle. Deux formes issues des usages historiques ont été testées depuis GitHub Actions le 2 septembre 2026 :
+
+- `f1n1.pdf`, forme utilisée historiquement pour une plage de vues ;
+- `f1.pdf`, forme testée pour une vue unique.
+
+Dans les deux cas, Gallica a répondu HTTP 200 avec `text/html;charset=UTF-8` plutôt qu'un flux commençant par `%PDF`. Le quota PDF reste une donnée publique connue, mais cela ne suffit pas à établir un contrat d'accès automatisé reproductible. Le SDK rouvrira cette capacité lorsqu'un mécanisme public actuel aura été caractérisé et validé en direct.
 
 ## Sources de travail
 
