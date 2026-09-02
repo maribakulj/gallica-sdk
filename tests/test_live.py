@@ -41,6 +41,6 @@ def test_public_gallica_phase1_document_access() -> None:
         assert issue is not None
         assert issue.ark == "bpt6k5509212w"
 
-        pdf = gallica.document("bpt6k5738219s").pdf(start_view=1, nviews=1)
+        pdf = gallica.document("bc6p06zq4dn").page(1).pdf()
         assert pdf.startswith(b"%PDF")
         assert len(pdf) > 1000
