@@ -1,0 +1,33 @@
+{
+  "recipes": [
+    {
+      "id": "search_then_fetch_metadata",
+      "description": "Search Gallica, collect ARKs from the typed SRU results, then build a resumable metadata corpus.",
+      "capabilities": ["search", "corpus_fetch"],
+      "notes": [
+        "Use record.ark from SearchResults records.",
+        "Keep maximum_records <= 50 per SRU request.",
+        "Use resume=true for repeatable corpus runs."
+      ]
+    },
+    {
+      "id": "selected_pages_ocr_and_images",
+      "description": "Retrieve ALTO and IIIF images for an explicit set of Gallica views.",
+      "capabilities": ["corpus_fetch"],
+      "notes": [
+        "Always provide explicit views.",
+        "Use image_width=1000 unless higher resolution is actually required.",
+        "Do not invent an implicit all-pages operation."
+      ]
+    },
+    {
+      "id": "periodical_issue_to_text",
+      "description": "Resolve one periodical issue by date, then retrieve its OCR text or search within it.",
+      "capabilities": ["periodical_issue", "document_text", "content_search"],
+      "notes": [
+        "Periodical.issue may return null when no issue matches the exact date.",
+        "Plain text is rate limited by the shared transport."
+      ]
+    }
+  ]
+}
