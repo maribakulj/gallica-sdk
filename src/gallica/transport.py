@@ -22,7 +22,14 @@ class Transport:
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         self._owns_client = client is None
-        self._client = client or httpx.Client(timeout=timeout, follow_redirects=True)
+        self._client = client or httpx.Client(
+            timeout=timeout,
+            follow_redirects=True,
+            headers={
+                "User-Agent": "gallica-sdk/0.1.0.dev0 (+https://github.com/maribakulj/gallica-sdk)",
+                "Accept": "*/*",
+            },
+        )
         self._retries = retries
         self._intervals = dict(intervals or {"default": 0.0, "iiif_hd": 12.5})
         self._last_call: dict[str, float] = {}
