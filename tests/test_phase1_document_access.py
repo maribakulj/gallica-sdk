@@ -21,7 +21,8 @@ class FakeTransport:
         if url.endswith(".texteBrut"):
             return httpx.Response(200, text="OCR text", request=request)
         if url.endswith("/services/ContentSearch"):
-            return httpx.Response(200, text="<results><countResults>1</countResults></results>", request=request)
+            xml = """<results countResults="1"><query>hugo</query><items><item score="0.75"><altoid>A1</altoid><p_id>PAG_357</p_id><content>HUGO</content></item></items></results>"""
+            return httpx.Response(200, text=xml, request=request)
         if url.endswith("/services/Issues"):
             xml = b'<issues><issue ark="ark:/12148/bpt6k5509212w" dayOfYear="84"/></issues>'
             return httpx.Response(200, content=xml, request=request)
@@ -42,12 +43,18 @@ def test_document_and_page_text_use_text_rate_bucket() -> None:
     assert transport.calls[-1][2] == "text"
 
 
-def test_content_search_preserves_structured_pagination_parameters() -> None:
+def test_content_search_preserves_parameters_and_parses_items() -> None:
     transport = FakeTransport()
     gallica = Gallica(transport=transport)  # type: ignore[arg-type]
 
     result = gallica.document("bpt6k5460422k").search_text("hugo", page=2, start_result=11)
-    assert "countResults" in result
+    assert result.total == 1
+    assert result.query == "hugo"
+    assert result.items[0].page_id == "PAG_357"
+    assert result.items[0].content_html == "HUGO"
+    assert result.items[0].alto_id == "A1"
+    assert result.items[0].score == 0.75
+    assert "countResults" in result.raw_xml
     _, params, _ = transport.calls[-1]
     assert params == {"ark": "bpt6k5460422k", "query": "hugo", "page": "2", "startResult": "11"}
 

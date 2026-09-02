@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .models import ContentSearchResults, DocumentMetadata
+
 if TYPE_CHECKING:
     from .client import Gallica
 
@@ -12,8 +14,8 @@ class Document:
     _gallica: Gallica
     ark: str
 
-    def metadata(self) -> str:
-        """Return the raw OAIRecord XML for this document."""
+    def metadata(self) -> DocumentMetadata:
+        """Return typed Dublin Core and technical OAIRecord metadata."""
         return self._gallica._metadata(self.ark)
 
     def page_count(self) -> int:
@@ -30,8 +32,8 @@ class Document:
         *,
         page: int | None = None,
         start_result: int | None = None,
-    ) -> str:
-        """Search within OCR and return the raw ContentSearch XML."""
+    ) -> ContentSearchResults:
+        """Search within OCR and return typed ContentSearch results."""
         return self._gallica._content_search(
             self.ark,
             query,

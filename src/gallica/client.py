@@ -8,6 +8,8 @@ from urllib.parse import quote
 
 from .ark import ark_uri, normalize_ark
 from .document import Document
+from .models import ContentSearchResults, DocumentMetadata, SearchResults
+from .parsing import parse_content_search, parse_oai_record, parse_sru
 from .periodical import Periodical
 from .transport import Transport
 
@@ -41,8 +43,8 @@ class Gallica:
         *,
         start_record: int = 1,
         maximum_records: int = 50,
-    ) -> str:
-        """Run a raw SRU 1.2 search and return the XML response as text."""
+    ) -> SearchResults:
+        """Search Gallica through SRU 1.2 and return typed Dublin Core records."""
         if start_record < 1:
             raise ValueError("start_record must be >= 1")
         if not 1 <= maximum_records <= 50:
@@ -57,13 +59,14 @@ class Gallica:
                 "maximumRecords": str(maximum_records),
             },
         )
-        return response.text
+        return parse_sru(response.text, fallback_query=query)
 
-    def _metadata(self, ark: str) -> str:
+    def _metadata(self, ark: str) -> DocumentMetadata:
+        normalized = normalize_ark(ark)
         response = self._transport.get(
-            f"{BASE_URL}/services/OAIRecord", params={"ark": normalize_ark(ark)}
+            f"{BASE_URL}/services/OAIRecord", params={"ark": normalized}
         )
-        return response.text
+        return parse_oai_record(response.text, ark=normalized)
 
     def _page_count(self, ark: str) -> int:
         response = self._transport.get(
@@ -96,7 +99,7 @@ class Gallica:
         *,
         page: int | None = None,
         start_result: int | None = None,
-    ) -> str:
+    ) -> ContentSearchResults:
         params = {"ark": normalize_ark(ark), "query": query}
         if page is not None:
             if page < 1:
@@ -106,7 +109,8 @@ class Gallica:
             if start_result < 1:
                 raise ValueError("start_result must be >= 1")
             params["startResult"] = str(start_result)
-        return self._transport.get(f"{BASE_URL}/services/ContentSearch", params=params).text
+        response = self._transport.get(f"{BASE_URL}/services/ContentSearch", params=params)
+        return parse_content_search(response.text, fallback_query=query)
 
     def _alto(self, ark: str, view: int) -> bytes:
         if view < 1:

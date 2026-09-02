@@ -11,12 +11,19 @@ pytestmark = pytest.mark.live
 
 def test_public_gallica_vertical_slice() -> None:
     with Gallica() as gallica:
-        xml = gallica.search('gallica all "Verdun"', maximum_records=1)
-        assert "searchRetrieveResponse" in xml
+        results = gallica.search('gallica all "Verdun"', maximum_records=1)
+        assert results.total > 0
+        assert len(results) == 1
+        assert results.records[0].title is not None
+        assert results.records[0].ark is not None
+        assert "searchRetrieveResponse" in results.raw_xml
 
         doc = gallica.document("bpt6k5738219s")
         assert doc.page_count() == 374
-        assert "results" in doc.metadata()
+        metadata = doc.metadata()
+        assert metadata.ark == "bpt6k5738219s"
+        assert metadata.record.identifiers
+        assert "results" in metadata.raw_xml
 
         alto = gallica.document("bpt6k5619759j").page(3).alto()
         assert len(alto) > 1000
@@ -34,8 +41,12 @@ def test_public_gallica_phase1_document_access() -> None:
         assert len(text_doc.text()) > 100
         assert len(text_doc.page(1).text()) > 10
 
-        search_xml = text_doc.search_text("hugo", start_result=1)
-        assert "results" in search_xml.lower()
+        search = text_doc.search_text("hugo", start_result=1)
+        assert search.total >= 1
+        assert len(search) >= 1
+        assert search.items[0].page_id is not None
+        assert search.items[0].content_html is not None
+        assert "results" in search.raw_xml.lower()
 
         issue = gallica.periodical("cb32798952c").issue(date(1937, 3, 25))
         assert issue is not None
