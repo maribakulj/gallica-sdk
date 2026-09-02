@@ -8,7 +8,7 @@ Le projet ne crée pas une nouvelle API réseau. Il fournit une façade Python m
 
 **0.1.0.dev0 — Phase 1 / accès documentaire.**
 
-Le SDK couvre maintenant recherche SRU, métadonnées, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR, résolution de numéros de périodiques et PDF. Les outils de corpus restent volontairement différés jusqu'à stabilisation complète de ces primitives.
+Le SDK couvre maintenant recherche SRU, métadonnées, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR, résolution de numéros de périodiques et PDF d'une vue. Les outils de corpus restent volontairement différés jusqu'à stabilisation complète de ces primitives.
 
 ## Installation de développement
 
@@ -37,7 +37,7 @@ with Gallica() as g:
     image = page.image(width=1000)
 ```
 
-Texte, recherche OCR et PDF :
+Texte et recherche OCR :
 
 ```python
 from gallica import Gallica
@@ -48,9 +48,18 @@ with Gallica() as g:
     text = doc.text()
     first_page_text = doc.page(1).text()
     matches_xml = doc.search_text("hugo", start_result=1)
-
-    pdf = doc.pdf(start_view=1, nviews=5)
 ```
+
+PDF d'une vue :
+
+```python
+from gallica import Gallica
+
+with Gallica() as g:
+    pdf = g.document("bc6p06zq4dn").page(1).pdf()
+```
+
+Le SDK n'annonce pas encore le téléchargement PDF multi-vues ou du document complet. Lors de la validation publique du 2 septembre 2026, le qualifier historique `f1n1.pdf` utilisé par d'anciens wrappers a renvoyé une page HTML plutôt qu'un flux PDF. La forme `fN.pdf` est, elle, testée en direct avant d'être exposée par `Page.pdf()`.
 
 Périodiques :
 
@@ -85,10 +94,10 @@ Document.metadata()
 Document.page_count()
 Document.text()
 Document.search_text()
-Document.pdf()
 Document.page()
 Page.text()
 Page.alto()
+Page.pdf()
 Page.iiif_info()
 Page.image()
 Periodical.issue()
@@ -126,6 +135,7 @@ Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage su
 ## Pas encore dans la 0.1
 
 - modèles structurés SRU/OAIRecord/ContentSearch ;
+- PDF multi-vues / document complet ;
 - outils de corpus et reprise ;
 - DataFrame / Parquet ;
 - CLI ;
