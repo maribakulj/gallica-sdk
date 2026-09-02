@@ -138,17 +138,15 @@ class Gallica:
                 return normalize_ark(issue_ark)
         return None
 
-    def _pdf(self, ark: str, *, start_view: int | None = None, nviews: int | None = None) -> bytes:
-        root = f"{BASE_URL}/ark:/12148/{normalize_ark(ark)}"
-        if start_view is None:
-            url = f"{root}.pdf"
-        else:
-            if start_view < 1:
-                raise ValueError("start_view must be >= 1")
-            if nviews is None or nviews < 1:
-                raise ValueError("nviews must be >= 1 when start_view is provided")
-            url = f"{root}/f{start_view}n{nviews}.pdf"
-        return self._transport.get(url, bucket="pdf").content
+    def _page_pdf(self, ark: str, view: int) -> bytes:
+        if view < 1:
+            raise ValueError("view must be >= 1")
+        url = f"{BASE_URL}/ark:/12148/{normalize_ark(ark)}/f{view}.pdf"
+        response = self._transport.get(url, bucket="pdf")
+        if not response.content.startswith(b"%PDF"):
+            content_type = response.headers.get("content-type", "unknown")
+            raise RuntimeError(f"Gallica did not return PDF content (content-type: {content_type})")
+        return response.content
 
     def _iiif_info(self, ark: str, view: int) -> dict[str, object]:
         if view < 1:
