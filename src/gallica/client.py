@@ -7,7 +7,8 @@ from datetime import date, timedelta
 from typing import Self, cast
 from urllib.parse import quote
 
-from .agent import CapabilitySpec, capabilities as capability_contracts
+from .agent import CapabilitySpec
+from .agent import capabilities as capability_contracts
 from .ark import ark_uri, normalize_ark
 from .corpus import Corpus
 from .document import Document
