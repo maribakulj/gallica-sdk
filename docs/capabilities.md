@@ -15,7 +15,7 @@ Cette matrice décrit le périmètre public visé par le SDK et distingue les ca
 | Image IIIF | IIIF Image | ARK + vue | `bytes` image | `/full/full/` ou largeur >1000 px : classe HD ; quota public documenté | supportée, largeur prudente par défaut |
 | PDF automatisé | représentation `.pdf` / qualifiers historiques | ARK / vue / plage | non exposé | quota public documenté : 4/min ; comportement automatisé à caractériser | non supportée pour l'instant |
 | Corpus métadonnées/texte | composition SDK | liste d'ARK | `CorpusReport` + manifest + fichiers | réutilise les quotas du transport ; synchrone | supportée en 0.2 dev |
-| Corpus ALTO/images | composition SDK | liste d'ARK + vues | à définir | volume, reprise et quotas à caractériser | différée |
+| Corpus ALTO/images | composition SDK | liste d'ARK + vues explicites | `CorpusReport` + fichiers par vue | aucune sélection implicite de toutes les vues | supportée en 0.2 dev |
 
 ## Règle de statut
 
@@ -37,15 +37,17 @@ Le SDK transforme seulement les structures suffisamment stables pour apporter un
 - OAIRecord devient `DocumentMetadata`, avec le Dublin Core, `mode_indexation`, `nqamoyen` lorsqu'ils existent, et le XML original ;
 - ContentSearch devient `ContentSearchResults`, avec `total`, `query`, les items (`p_id`, extrait HTML, `altoid`, score) et le XML original.
 
-Chaque modèle structuré conserve `raw_xml`. Cette décision évite de devoir choisir entre ergonomie et fidélité aux réponses Gallica, et permet d'ajouter plus tard des champs sans casser l'accès aux données non modélisées.
+Chaque modèle structuré conserve `raw_xml`.
 
-## Corpus Phase 3
+## Corpus 0.2
 
-`Gallica.corpus(arks)` normalise et déduplique les ARK en conservant l'ordre. `Corpus.fetch()` peut produire `metadata.json` et `text.txt` par document ainsi qu'un `manifest.jsonl` append-only pour les tentatives réellement exécutées.
+`Gallica.corpus(arks)` normalise et déduplique les ARK en conservant l'ordre. `Corpus.fetch()` peut produire `metadata.json`, `text.txt`, `pages/<vue>/alto.xml` et `pages/<vue>/image.jpg` ainsi qu'un `manifest.jsonl` append-only pour les tentatives réellement exécutées.
 
-La reprise ne repose pas sur la seule présence d'une ancienne ligne de manifest : elle vérifie les artefacts demandés. Avec `resume=True`, un document entièrement présent est sauté ; un document partiel ne récupère que les fichiers manquants. Les fichiers sont écrits via un fichier temporaire puis renommés atomiquement. Une exception ordinaire sur un ARK est enregistrée et le corpus continue ; les interruptions système ne sont pas absorbées.
+La reprise vérifie les artefacts demandés. Avec `resume=True`, un document entièrement présent est sauté ; un document partiel ne récupère que les fichiers manquants. Les fichiers texte et binaires sont écrits via un fichier temporaire puis renommés atomiquement. Une exception ordinaire sur un ARK est enregistrée et le corpus continue ; les interruptions système ne sont pas absorbées.
 
-La V1 reste synchrone et passe exclusivement par les primitives du SDK. Elle ne possède donc aucun transport parallèle susceptible de contourner les buckets de quotas existants.
+ALTO et images exigent `views=[...]`. Cette contrainte est intentionnelle : le SDK ne transforme jamais une requête de page en téléchargement implicite de l'intégralité d'un document. Les vues sont validées, dédupliquées et conservent leur ordre. `image_width` utilise 1000 px par défaut et réutilise le bucket IIIF HD au-dessus de cette largeur.
+
+Le corpus reste synchrone et passe exclusivement par les primitives du SDK. Il ne possède donc aucun transport parallèle susceptible de contourner les buckets de quotas existants.
 
 ## Choix d'interface documentaire
 
