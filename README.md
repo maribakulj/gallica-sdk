@@ -6,9 +6,9 @@ Le projet ne crée pas une nouvelle API réseau. Il fournit une façade Python m
 
 ## Statut
 
-**0.1.0.dev0 — Phase 1 / accès documentaire.**
+**0.1.0.dev0 — Phase 2 / résultats structurés.**
 
-Le SDK couvre maintenant recherche SRU, métadonnées, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR et résolution de numéros de périodiques. Les outils de corpus restent volontairement différés jusqu'à stabilisation complète de ces primitives.
+Le SDK couvre recherche SRU, métadonnées OAIRecord, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR et résolution de numéros de périodiques. SRU, OAIRecord et ContentSearch sont désormais transformés en objets Python typés tout en conservant le XML original dans `raw_xml`.
 
 ## Installation de développement
 
@@ -20,24 +20,43 @@ python -m pip install -e '.[dev]'
 
 Python 3.11+ est requis.
 
-## Usage documentaire
+## Recherche SRU
+
+```python
+from gallica import Gallica
+
+with Gallica() as g:
+    results = g.search('gallica all "Verdun"', maximum_records=10)
+
+    print(results.total)
+    for record in results:
+        print(record.ark, record.title)
+        print(record.values("creator"))
+
+    raw_xml = results.raw_xml
+```
+
+Les champs Dublin Core sont répétables. `DublinCoreRecord.values("creator")` renvoie donc toujours un tuple plutôt que d'écraser silencieusement plusieurs auteurs.
+
+## Document et métadonnées
 
 ```python
 from gallica import Gallica
 
 with Gallica() as g:
     doc = g.document("ark:/12148/bpt6k5738219s")
+    metadata = doc.metadata()
 
+    print(metadata.record.title)
+    print(metadata.record.identifiers)
+    print(metadata.indexing_mode)
+    print(metadata.ocr_quality)
     print(doc.page_count())
-    print(doc.metadata()[:200])
-
-    page = doc.page(3)
-    alto = page.alto()
-    info = page.iiif_info()
-    image = page.image(width=1000)
 ```
 
-Texte et recherche OCR :
+`metadata.raw_xml` reste disponible pour les informations Gallica qui ne sont pas encore promues dans le modèle stable.
+
+## OCR, recherche plein texte et IIIF
 
 ```python
 from gallica import Gallica
@@ -46,11 +65,21 @@ with Gallica() as g:
     doc = g.document("bpt6k5460422k")
 
     text = doc.text()
-    first_page_text = doc.page(1).text()
-    matches_xml = doc.search_text("hugo", start_result=1)
+    page_text = doc.page(1).text()
+
+    matches = doc.search_text("hugo", start_result=1)
+    for item in matches:
+        print(item.page_id, item.content_html)
+
+    page = doc.page(3)
+    alto = page.alto()
+    info = page.iiif_info()
+    image = page.image(width=1000)
 ```
 
-Périodiques :
+`ContentSearchResults` expose `total`, `query`, `items` et `raw_xml`. Le contenu des extraits reste du HTML fourni par Gallica dans `content_html`, il n'est pas transformé implicitement.
+
+## Périodiques
 
 ```python
 from datetime import date
@@ -62,78 +91,53 @@ with Gallica() as g:
         print(issue.ark)
 ```
 
-Recherche SRU :
-
-```python
-from gallica import Gallica
-
-with Gallica() as g:
-    xml = g.search('gallica all "Verdun"', maximum_records=10)
-```
-
-Le SRU, OAIRecord et ContentSearch retournent encore volontairement leur XML brut. Les modèles structurés ne seront ajoutés qu'après cartographie suffisante des formes de réponses réelles afin de ne pas figer trop tôt une abstraction incorrecte.
-
 ## Surface publique actuelle
 
 ```text
-Gallica.search()
-Gallica.document()
-Gallica.periodical()
-Document.metadata()
-Document.page_count()
-Document.text()
-Document.search_text()
-Document.page()
-Page.text()
-Page.alto()
-Page.iiif_info()
-Page.image()
-Periodical.issue()
+Gallica.search() -> SearchResults
+Gallica.document() -> Document
+Gallica.periodical() -> Periodical
+Document.metadata() -> DocumentMetadata
+Document.page_count() -> int
+Document.text() -> str
+Document.search_text() -> ContentSearchResults
+Document.page() -> Page
+Page.text() -> str
+Page.alto() -> bytes
+Page.iiif_info() -> dict
+Page.image() -> bytes
+Periodical.issue() -> Document | None
 ```
 
-`Page.image()` utilise une largeur prudente de 1000 px par défaut. Les requêtes de largeur supérieure à 1000 px sont classées dans le bucket haute définition et limitées par le transport.
+Modèles publics : `DublinCoreRecord`, `SearchResults`, `DocumentMetadata`, `ContentSearchItem`, `ContentSearchResults`.
 
-Les appels `.texteBrut` utilisent un bucket de 12,5 secondes afin de rester sous le quota public documenté de 5/minute. Les réponses 429 et erreurs serveur transitoires sont retentées de manière bornée et `Retry-After` est respecté lorsqu'il est numérique.
+`Page.image()` utilise une largeur prudente de 1000 px par défaut. Les requêtes de largeur supérieure à 1000 px sont classées dans le bucket haute définition et limitées par le transport. Les appels `.texteBrut` utilisent un bucket de 12,5 secondes afin de rester sous le quota public documenté de 5/minute.
 
 ### Pourquoi le PDF n'est pas encore exposé
 
-La documentation publique indique toujours un quota pour les représentations PDF, mais cela ne suffit pas à garantir un accès automatisé exploitable par le SDK. Les deux formes historiques testées le 2 septembre 2026, `f1n1.pdf` puis `f1.pdf`, ont répondu HTTP 200 avec du HTML depuis un runner GitHub public au lieu d'un flux PDF.
-
-Le SDK préfère donc ne pas fournir une méthode `pdf()` qui fonctionnerait seulement dans certains contextes implicites. Cette capacité reste à caractériser séparément avant d'entrer dans le contrat public.
+Les deux formes historiques testées le 2 septembre 2026, `f1n1.pdf` puis `f1.pdf`, ont répondu HTTP 200 avec du HTML depuis un runner GitHub public au lieu d'un flux PDF. Le SDK ne fournit donc pas de méthode `pdf()` tant qu'un contrat public automatisable n'est pas caractérisé de manière reproductible.
 
 ## Tests
 
-Tests unitaires et d'intégration simulée :
-
 ```bash
 pytest -m 'not live'
-```
-
-Validation contre les API publiques Gallica :
-
-```bash
 pytest -m live tests/test_live.py
 ```
 
-La CI exécute les tests locaux sous Python 3.11 et 3.12 et un smoke test séparé depuis un runner GitHub public.
-
-Une primitive réseau n'est considérée supportée que si sa requête, son comportement simulé et un scénario live pertinent sont couverts.
+La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un smoke test séparé depuis un runner GitHub public. Une primitive réseau n'est considérée supportée que si sa requête, son comportement simulé et un scénario live pertinent sont couverts.
 
 ## Architecture et périmètre
 
-- [`docs/architecture.md`](docs/architecture.md) : mission, principes, non-objectifs et architecture initiale.
-- [`docs/capabilities.md`](docs/capabilities.md) : matrice des API Gallica connues, contraintes et statut d'intégration.
+- [`docs/architecture.md`](docs/architecture.md) : mission, principes et non-objectifs.
+- [`docs/capabilities.md`](docs/capabilities.md) : matrice des services Gallica, contraintes et statut d'intégration.
 
 Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage sur les wrappers historiques et leurs défauts. `gallica-sdk` n'en dépend pas et ne reprend pas son architecture legacy.
 
 ## Pas encore dans la 0.1
 
-- modèles structurés SRU/OAIRecord/ContentSearch ;
 - accès PDF automatisé ;
 - outils de corpus et reprise ;
-- DataFrame / Parquet ;
+- exports DataFrame / JSONL / Parquet ;
 - CLI ;
 - MCP ;
 - async.
-
-Ces fonctionnalités seront ajoutées par tranches verticales après validation des primitives déjà présentes.
