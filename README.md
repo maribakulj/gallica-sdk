@@ -6,9 +6,11 @@ Le projet ne crée pas une nouvelle API réseau. Il fournit une façade Python m
 
 ## Statut
 
-**0.1.0.dev0 — Phase 2 / résultats structurés.**
+**0.2.0.dev0 — Phase 3 / corpus reprenable.**
 
-Le SDK couvre recherche SRU, métadonnées OAIRecord, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR et résolution de numéros de périodiques. SRU, OAIRecord et ContentSearch sont désormais transformés en objets Python typés tout en conservant le XML original dans `raw_xml`.
+Le SDK couvre recherche SRU, métadonnées OAIRecord, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR et résolution de numéros de périodiques. SRU, OAIRecord et ContentSearch sont transformés en objets Python typés tout en conservant le XML original dans `raw_xml`.
+
+La ligne 0.2 ajoute une première couche `Corpus` volontairement synchrone, avec manifest, reprise et isolation des erreurs.
 
 ## Installation de développement
 
@@ -91,12 +93,56 @@ with Gallica() as g:
         print(issue.ark)
 ```
 
+## Corpus reprenable
+
+```python
+from gallica import Gallica
+
+arks = [
+    "bpt6k5738219s",
+    "bpt6k5460422k",
+]
+
+with Gallica() as g:
+    report = g.corpus(arks).fetch(
+        "./corpus",
+        metadata=True,
+        text=True,
+        resume=True,
+    )
+
+print(len(report.successes))
+print(len(report.failures))
+print(len(report.skipped))
+```
+
+Disposition produite :
+
+```text
+corpus/
+├── manifest.jsonl
+└── documents/
+    ├── bpt6k5738219s/
+    │   ├── metadata.json
+    │   └── text.txt
+    └── bpt6k5460422k/
+        ├── metadata.json
+        └── text.txt
+```
+
+Le manifest reçoit une ligne JSON par tentative exécutée avec le statut, les chemins produits et l'erreur éventuelle. Les écritures de fichiers sont atomiques. Avec `resume=True`, un document n'est sauté que si tous les artefacts demandés existent déjà ; un document partiellement terminé ne retélécharge que ce qui manque.
+
+Les ARK sont normalisés et dédupliqués en conservant leur ordre. Une erreur sur un ARK est enregistrée et n'interrompt pas les suivants. `KeyboardInterrupt` et les autres exceptions système ne sont pas absorbées.
+
+La V1 de `Corpus` reste volontairement synchrone : elle réutilise le transport central du SDK, donc les quotas et retries des primitives restent appliqués. Il n'existe pas encore de parallélisme qui pourrait court-circuiter ces limites.
+
 ## Surface publique actuelle
 
 ```text
 Gallica.search() -> SearchResults
 Gallica.document() -> Document
 Gallica.periodical() -> Periodical
+Gallica.corpus() -> Corpus
 Document.metadata() -> DocumentMetadata
 Document.page_count() -> int
 Document.text() -> str
@@ -107,9 +153,10 @@ Page.alto() -> bytes
 Page.iiif_info() -> dict
 Page.image() -> bytes
 Periodical.issue() -> Document | None
+Corpus.fetch() -> CorpusReport
 ```
 
-Modèles publics : `DublinCoreRecord`, `SearchResults`, `DocumentMetadata`, `ContentSearchItem`, `ContentSearchResults`.
+Modèles publics : `DublinCoreRecord`, `SearchResults`, `DocumentMetadata`, `ContentSearchItem`, `ContentSearchResults`, `Corpus`, `CorpusItemResult`, `CorpusReport`.
 
 `Page.image()` utilise une largeur prudente de 1000 px par défaut. Les requêtes de largeur supérieure à 1000 px sont classées dans le bucket haute définition et limitées par le transport. Les appels `.texteBrut` utilisent un bucket de 12,5 secondes afin de rester sous le quota public documenté de 5/minute.
 
@@ -133,11 +180,13 @@ La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un 
 
 Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage sur les wrappers historiques et leurs défauts. `gallica-sdk` n'en dépend pas et ne reprend pas son architecture legacy.
 
-## Pas encore dans la 0.1
+## Pas encore dans la 0.2
 
 - accès PDF automatisé ;
-- outils de corpus et reprise ;
-- exports DataFrame / JSONL / Parquet ;
+- ALTO/images au niveau `Corpus` ;
+- exports DataFrame / Parquet ;
+- parallélisme / async ;
 - CLI ;
-- MCP ;
-- async.
+- MCP.
+
+Ces fonctionnalités restent différées jusqu'à validation de la reprise et du manifest sur les primitives actuelles.

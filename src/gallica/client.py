@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Iterable
 from datetime import date, timedelta
 from typing import Self, cast
 from urllib.parse import quote
 
 from .ark import ark_uri, normalize_ark
+from .corpus import Corpus
 from .document import Document
 from .models import ContentSearchResults, DocumentMetadata, SearchResults
 from .parsing import parse_content_search, parse_oai_record, parse_sru
@@ -36,6 +38,9 @@ class Gallica:
 
     def periodical(self, ark: str) -> Periodical:
         return Periodical(self, normalize_ark(ark))
+
+    def corpus(self, arks: Iterable[str]) -> Corpus:
+        return Corpus(self, arks)
 
     def search(
         self,

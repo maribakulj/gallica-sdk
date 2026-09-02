@@ -14,7 +14,8 @@ Cette matrice décrit le périmètre public visé par le SDK et distingue les ca
 | Informations IIIF | IIIF `info.json` | ARK + vue | `dict` JSON | endpoint Image distinct de Presentation | supportée |
 | Image IIIF | IIIF Image | ARK + vue | `bytes` image | `/full/full/` ou largeur >1000 px : classe HD ; quota public documenté | supportée, largeur prudente par défaut |
 | PDF automatisé | représentation `.pdf` / qualifiers historiques | ARK / vue / plage | non exposé | quota public documenté : 4/min ; comportement automatisé à caractériser | non supportée pour l'instant |
-| Corpus / reprise | composition SDK | liste d'ARK | manifest + fichiers | doit respecter les quotas de toutes les primitives | 0.2 cible |
+| Corpus métadonnées/texte | composition SDK | liste d'ARK | `CorpusReport` + manifest + fichiers | réutilise les quotas du transport ; synchrone | supportée en 0.2 dev |
+| Corpus ALTO/images | composition SDK | liste d'ARK + vues | à définir | volume, reprise et quotas à caractériser | différée |
 
 ## Règle de statut
 
@@ -24,6 +25,8 @@ Une ligne ne doit pas être annoncée comme « supportée » uniquement parce qu
 2. une réponse simulée couvrant le parsing ou la valeur retournée ;
 3. un smoke test live depuis un réseau public ;
 4. une documentation de la contrainte de quota lorsqu'elle existe.
+
+Pour une capacité de composition comme `Corpus`, il faut en plus des tests déterministes de reprise, d'écriture partielle et d'isolation des erreurs.
 
 ## Contrats structurés Phase 2
 
@@ -35,6 +38,14 @@ Le SDK transforme seulement les structures suffisamment stables pour apporter un
 - ContentSearch devient `ContentSearchResults`, avec `total`, `query`, les items (`p_id`, extrait HTML, `altoid`, score) et le XML original.
 
 Chaque modèle structuré conserve `raw_xml`. Cette décision évite de devoir choisir entre ergonomie et fidélité aux réponses Gallica, et permet d'ajouter plus tard des champs sans casser l'accès aux données non modélisées.
+
+## Corpus Phase 3
+
+`Gallica.corpus(arks)` normalise et déduplique les ARK en conservant l'ordre. `Corpus.fetch()` peut produire `metadata.json` et `text.txt` par document ainsi qu'un `manifest.jsonl` append-only pour les tentatives réellement exécutées.
+
+La reprise ne repose pas sur la seule présence d'une ancienne ligne de manifest : elle vérifie les artefacts demandés. Avec `resume=True`, un document entièrement présent est sauté ; un document partiel ne récupère que les fichiers manquants. Les fichiers sont écrits via un fichier temporaire puis renommés atomiquement. Une exception ordinaire sur un ARK est enregistrée et le corpus continue ; les interruptions système ne sont pas absorbées.
+
+La V1 reste synchrone et passe exclusivement par les primitives du SDK. Elle ne possède donc aucun transport parallèle susceptible de contourner les buckets de quotas existants.
 
 ## Choix d'interface documentaire
 
