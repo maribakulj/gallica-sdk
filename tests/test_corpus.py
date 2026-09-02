@@ -7,6 +7,21 @@ from gallica.corpus import Corpus
 from gallica.models import DocumentMetadata, DublinCoreRecord
 
 
+class FakePage:
+    def __init__(self, ark: str, number: int, calls: list[tuple[str, str]]) -> None:
+        self.ark = ark
+        self.number = number
+        self.calls = calls
+
+    def alto(self) -> bytes:
+        self.calls.append((self.ark, f"alto:{self.number}"))
+        return f"<alto view='{self.number}'/>".encode()
+
+    def image(self, *, width: int = 1000, fmt: str = "jpg") -> bytes:
+        self.calls.append((self.ark, f"image:{self.number}:{width}:{fmt}"))
+        return f"JPEG {self.number} {width}".encode()
+
+
 class FakeDocument:
     def __init__(self, ark: str, calls: list[tuple[str, str]]) -> None:
         self.ark = ark
@@ -19,7 +34,10 @@ class FakeDocument:
         return DocumentMetadata(
             ark=self.ark,
             record=DublinCoreRecord(
-                fields={"title": (f"Title {self.ark}",), "identifier": (f"https://gallica.bnf.fr/ark:/12148/{self.ark}",)}
+                fields={
+                    "title": (f"Title {self.ark}",),
+                    "identifier": (f"https://gallica.bnf.fr/ark:/12148/{self.ark}",),
+                }
             ),
             indexing_mode="OCR",
             ocr_quality=95.0,
@@ -29,6 +47,9 @@ class FakeDocument:
     def text(self) -> str:
         self.calls.append((self.ark, "text"))
         return f"Text for {self.ark}"
+
+    def page(self, number: int) -> FakePage:
+        return FakePage(self.ark, number, self.calls)
 
 
 class FakeGallica:
@@ -77,6 +98,55 @@ def test_corpus_resume_fetches_only_missing_artifact(tmp_path: Path) -> None:
     report = corpus.fetch(tmp_path, metadata=True, text=True, resume=True)
     assert report.items[0].status == "success"
     assert gallica.calls == [("bpt6k1", "text")]
+
+
+def test_corpus_fetches_explicit_alto_and_images(tmp_path: Path) -> None:
+    gallica = FakeGallica()
+    corpus = Corpus(gallica, ["bpt6k1"])  # type: ignore[arg-type]
+
+    report = corpus.fetch(
+        tmp_path,
+        metadata=False,
+        alto=True,
+        images=True,
+        views=[2, 1, 2],
+        image_width=800,
+    )
+    assert len(report.successes) == 1
+    item = report.successes[0]
+    assert len(item.alto_paths) == 2
+    assert len(item.image_paths) == 2
+    assert (tmp_path / "documents" / "bpt6k1" / "pages" / "2" / "alto.xml").read_bytes() == b"<alto view='2'/>"
+    assert (tmp_path / "documents" / "bpt6k1" / "pages" / "1" / "image.jpg").read_bytes() == b"JPEG 1 800"
+    assert gallica.calls == [
+        ("bpt6k1", "alto:2"),
+        ("bpt6k1", "alto:1"),
+        ("bpt6k1", "image:2:800:jpg"),
+        ("bpt6k1", "image:1:800:jpg"),
+    ]
+
+    gallica.calls.clear()
+    second = corpus.fetch(
+        tmp_path,
+        metadata=False,
+        alto=True,
+        images=True,
+        views=[2, 1],
+        image_width=800,
+        resume=True,
+    )
+    assert len(second.skipped) == 1
+    assert gallica.calls == []
+
+
+def test_corpus_page_artifacts_require_explicit_views(tmp_path: Path) -> None:
+    corpus = Corpus(FakeGallica(), ["bpt6k1"])  # type: ignore[arg-type]
+    try:
+        corpus.fetch(tmp_path, metadata=False, alto=True)
+    except ValueError as exc:
+        assert "views must be provided" in str(exc)
+    else:
+        raise AssertionError("page artifacts without views should be rejected")
 
 
 def test_corpus_failure_does_not_stop_following_arks(tmp_path: Path) -> None:
