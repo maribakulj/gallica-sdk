@@ -1,3 +1,4 @@
+from .agent import CapabilitySpec, capabilities
 from .client import Gallica
 from .corpus import Corpus, CorpusItemResult, CorpusReport
 from .document import Document, Page
@@ -11,6 +12,7 @@ from .models import (
 from .periodical import Periodical
 
 __all__ = [
+    "CapabilitySpec",
     "ContentSearchItem",
     "ContentSearchResults",
     "Corpus",
@@ -23,4 +25,5 @@ __all__ = [
     "Page",
     "Periodical",
     "SearchResults",
+    "capabilities",
 ]

@@ -7,6 +7,8 @@ from datetime import date, timedelta
 from typing import Self, cast
 from urllib.parse import quote
 
+from .agent import CapabilitySpec
+from .agent import capabilities as capability_contracts
 from .ark import ark_uri, normalize_ark
 from .corpus import Corpus
 from .document import Document
@@ -32,6 +34,11 @@ class Gallica:
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         self.close()
+
+    @staticmethod
+    def capabilities() -> tuple[CapabilitySpec, ...]:
+        """Return machine-readable contracts for the supported SDK surface."""
+        return capability_contracts()
 
     def document(self, ark: str) -> Document:
         return Document(self, normalize_ark(ark))
