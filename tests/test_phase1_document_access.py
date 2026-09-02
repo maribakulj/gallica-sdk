@@ -26,7 +26,12 @@ class FakeTransport:
             xml = b'<issues><issue ark="ark:/12148/bpt6k5509212w" dayOfYear="84"/></issues>'
             return httpx.Response(200, content=xml, request=request)
         if url.endswith(".pdf"):
-            return httpx.Response(200, content=b"%PDF-1.7\n", request=request)
+            return httpx.Response(
+                200,
+                content=b"%PDF-1.7\n",
+                headers={"content-type": "application/pdf"},
+                request=request,
+            )
         raise AssertionError(f"Unexpected URL: {url}")
 
 
@@ -65,11 +70,11 @@ def test_periodical_resolves_day_of_year_to_document() -> None:
     assert params == {"ark": "ark:/12148/cb32798952c/date", "date": "1937"}
 
 
-def test_partial_pdf_uses_pdf_bucket() -> None:
+def test_page_pdf_uses_validated_single_view_qualifier_and_pdf_bucket() -> None:
     transport = FakeTransport()
     gallica = Gallica(transport=transport)  # type: ignore[arg-type]
 
-    pdf = gallica.document("bpt6k5738219s").pdf(start_view=1, nviews=1)
+    pdf = gallica.document("bpt6k5738219s").page(1).pdf()
     assert pdf.startswith(b"%PDF")
-    assert transport.calls[-1][0].endswith("bpt6k5738219s/f1n1.pdf")
+    assert transport.calls[-1][0].endswith("bpt6k5738219s/f1.pdf")
     assert transport.calls[-1][2] == "pdf"
