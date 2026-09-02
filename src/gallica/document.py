@@ -20,6 +20,25 @@ class Document:
         """Return the number of image views reported by Pagination."""
         return self._gallica._page_count(self.ark)
 
+    def text(self) -> str:
+        """Return the document OCR text through Gallica's .texteBrut representation."""
+        return self._gallica._text(self.ark)
+
+    def search_text(
+        self,
+        query: str,
+        *,
+        page: int | None = None,
+        start_result: int | None = None,
+    ) -> str:
+        """Search within OCR and return the raw ContentSearch XML."""
+        return self._gallica._content_search(
+            self.ark,
+            query,
+            page=page,
+            start_result=start_result,
+        )
+
     def page(self, number: int) -> Page:
         if number < 1:
             raise ValueError("page number must be >= 1")
@@ -31,6 +50,10 @@ class Page:
     _gallica: Gallica
     ark: str
     number: int
+
+    def text(self) -> str:
+        """Return OCR text for this single Gallica view."""
+        return self._gallica._text(self.ark, start_view=self.number, nviews=1)
 
     def alto(self) -> bytes:
         """Return the raw ALTO XML bytes for this view."""

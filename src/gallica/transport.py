@@ -31,7 +31,15 @@ class Transport:
             },
         )
         self._retries = retries
-        self._intervals = dict(intervals or {"default": 0.0, "iiif_hd": 12.5})
+        self._intervals = dict(
+            intervals
+            or {
+                "default": 0.0,
+                "text": 12.5,
+                "pdf": 15.5,
+                "iiif_hd": 12.5,
+            }
+        )
         self._last_call: dict[str, float] = {}
         self._sleep = sleeper
 

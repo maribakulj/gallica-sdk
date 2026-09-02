@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
+from datetime import date, timedelta
 from typing import Self, cast
 from urllib.parse import quote
 
 from .ark import ark_uri, normalize_ark
 from .document import Document
+from .periodical import Periodical
 from .transport import Transport
 
 BASE_URL = "https://gallica.bnf.fr"
@@ -30,6 +32,9 @@ class Gallica:
     def document(self, ark: str) -> Document:
         return Document(self, normalize_ark(ark))
 
+    def periodical(self, ark: str) -> Periodical:
+        return Periodical(self, normalize_ark(ark))
+
     def search(
         self,
         query: str,
@@ -37,11 +42,7 @@ class Gallica:
         start_record: int = 1,
         maximum_records: int = 50,
     ) -> str:
-        """Run a raw SRU 1.2 search and return the XML response as text.
-
-        Structured result models are intentionally deferred until the real SRU
-        shapes have been mapped more completely.
-        """
+        """Run a raw SRU 1.2 search and return the XML response as text."""
         if start_record < 1:
             raise ValueError("start_record must be >= 1")
         if not 1 <= maximum_records <= 50:
@@ -76,6 +77,37 @@ class Gallica:
                     return count
         raise ValueError("Pagination response does not contain a valid nbVueImages")
 
+    def _text(self, ark: str, *, start_view: int | None = None, nviews: int | None = None) -> str:
+        root = f"{BASE_URL}/ark:/12148/{normalize_ark(ark)}"
+        if start_view is None:
+            url = f"{root}.texteBrut"
+        else:
+            if start_view < 1:
+                raise ValueError("start_view must be >= 1")
+            if nviews is None or nviews < 1:
+                raise ValueError("nviews must be >= 1 when start_view is provided")
+            url = f"{root}/f{start_view}n{nviews}.texteBrut"
+        return self._transport.get(url, bucket="text").text
+
+    def _content_search(
+        self,
+        ark: str,
+        query: str,
+        *,
+        page: int | None = None,
+        start_result: int | None = None,
+    ) -> str:
+        params = {"ark": normalize_ark(ark), "query": query}
+        if page is not None:
+            if page < 1:
+                raise ValueError("page must be >= 1")
+            params["page"] = str(page)
+        if start_result is not None:
+            if start_result < 1:
+                raise ValueError("start_result must be >= 1")
+            params["startResult"] = str(start_result)
+        return self._transport.get(f"{BASE_URL}/services/ContentSearch", params=params).text
+
     def _alto(self, ark: str, view: int) -> bytes:
         if view < 1:
             raise ValueError("view must be >= 1")
@@ -84,6 +116,27 @@ class Gallica:
             params={"O": normalize_ark(ark), "E": "ALTO", "Deb": str(view)},
         )
         return response.content
+
+    def _issue_for_date(self, ark: str, when: date) -> str | None:
+        response = self._transport.get(
+            f"{BASE_URL}/services/Issues",
+            params={"ark": f"ark:/12148/{normalize_ark(ark)}/date", "date": str(when.year)},
+        )
+        root = ET.fromstring(response.content)
+        for element in root.iter():
+            if element.tag.rsplit("}", 1)[-1] != "issue":
+                continue
+            issue_ark = element.attrib.get("ark")
+            raw_day = element.attrib.get("dayOfYear")
+            if not issue_ark or not raw_day:
+                continue
+            try:
+                issue_date = date(when.year, 1, 1) + timedelta(days=int(raw_day) - 1)
+            except (ValueError, OverflowError):
+                continue
+            if issue_date == when:
+                return normalize_ark(issue_ark)
+        return None
 
     def _iiif_info(self, ark: str, view: int) -> dict[str, object]:
         if view < 1:

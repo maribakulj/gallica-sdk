@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from gallica import Gallica
@@ -24,3 +26,17 @@ def test_public_gallica_vertical_slice() -> None:
 
         image = gallica.document("btv1b53066668g").page(1).image(width=1000)
         assert len(image) > 1000
+
+
+def test_public_gallica_phase1_document_access() -> None:
+    with Gallica() as gallica:
+        text_doc = gallica.document("bpt6k5460422k")
+        assert len(text_doc.text()) > 100
+        assert len(text_doc.page(1).text()) > 10
+
+        search_xml = text_doc.search_text("hugo", start_result=1)
+        assert "results" in search_xml.lower()
+
+        issue = gallica.periodical("cb32798952c").issue(date(1937, 3, 25))
+        assert issue is not None
+        assert issue.ark == "bpt6k5509212w"
