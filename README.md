@@ -6,11 +6,9 @@ Le projet ne crée pas une nouvelle API réseau. Il fournit une façade Python m
 
 ## Statut
 
-**0.2.0.dev0 — Phase 3 / corpus reprenable.**
+**0.2.0.dev0 — corpus reprenable avec artefacts documentaires et page par page.**
 
-Le SDK couvre recherche SRU, métadonnées OAIRecord, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR et résolution de numéros de périodiques. SRU, OAIRecord et ContentSearch sont transformés en objets Python typés tout en conservant le XML original dans `raw_xml`.
-
-La ligne 0.2 ajoute une première couche `Corpus` volontairement synchrone, avec manifest, reprise et isolation des erreurs.
+Le SDK couvre recherche SRU, métadonnées OAIRecord, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR, résolution de numéros de périodiques et traitement de corpus reprenable. SRU, OAIRecord et ContentSearch sont transformés en objets Python typés tout en conservant le XML original dans `raw_xml`.
 
 ## Installation de développement
 
@@ -34,13 +32,11 @@ with Gallica() as g:
     for record in results:
         print(record.ark, record.title)
         print(record.values("creator"))
-
-    raw_xml = results.raw_xml
 ```
 
-Les champs Dublin Core sont répétables. `DublinCoreRecord.values("creator")` renvoie donc toujours un tuple plutôt que d'écraser silencieusement plusieurs auteurs.
+Les champs Dublin Core sont répétables. Le XML source reste disponible dans `results.raw_xml`.
 
-## Document et métadonnées
+## Document
 
 ```python
 from gallica import Gallica
@@ -50,28 +46,12 @@ with Gallica() as g:
     metadata = doc.metadata()
 
     print(metadata.record.title)
-    print(metadata.record.identifiers)
     print(metadata.indexing_mode)
     print(metadata.ocr_quality)
     print(doc.page_count())
-```
-
-`metadata.raw_xml` reste disponible pour les informations Gallica qui ne sont pas encore promues dans le modèle stable.
-
-## OCR, recherche plein texte et IIIF
-
-```python
-from gallica import Gallica
-
-with Gallica() as g:
-    doc = g.document("bpt6k5460422k")
 
     text = doc.text()
-    page_text = doc.page(1).text()
-
-    matches = doc.search_text("hugo", start_result=1)
-    for item in matches:
-        print(item.page_id, item.content_html)
+    matches = doc.search_text("hugo")
 
     page = doc.page(3)
     alto = page.alto()
@@ -79,7 +59,7 @@ with Gallica() as g:
     image = page.image(width=1000)
 ```
 
-`ContentSearchResults` expose `total`, `query`, `items` et `raw_xml`. Le contenu des extraits reste du HTML fourni par Gallica dans `content_html`, il n'est pas transformé implicitement.
+`DocumentMetadata`, `SearchResults` et `ContentSearchResults` conservent leur réponse XML originale dans `raw_xml`.
 
 ## Périodiques
 
@@ -95,46 +75,55 @@ with Gallica() as g:
 
 ## Corpus reprenable
 
+Métadonnées et texte :
+
 ```python
 from gallica import Gallica
 
-arks = [
-    "bpt6k5738219s",
-    "bpt6k5460422k",
-]
-
 with Gallica() as g:
-    report = g.corpus(arks).fetch(
+    report = g.corpus(["bpt6k5738219s", "bpt6k5460422k"]).fetch(
         "./corpus",
         metadata=True,
         text=True,
         resume=True,
     )
-
-print(len(report.successes))
-print(len(report.failures))
-print(len(report.skipped))
 ```
 
-Disposition produite :
+ALTO et images sur des vues explicites :
+
+```python
+with Gallica() as g:
+    report = g.corpus(["bpt6k5619759j"]).fetch(
+        "./corpus",
+        metadata=False,
+        alto=True,
+        images=True,
+        views=[1, 2, 3],
+        image_width=1000,
+        resume=True,
+    )
+```
+
+Disposition :
 
 ```text
 corpus/
 ├── manifest.jsonl
 └── documents/
-    ├── bpt6k5738219s/
-    │   ├── metadata.json
-    │   └── text.txt
-    └── bpt6k5460422k/
+    └── <ark>/
         ├── metadata.json
-        └── text.txt
+        ├── text.txt
+        └── pages/
+            └── 1/
+                ├── alto.xml
+                └── image.jpg
 ```
 
-Le manifest reçoit une ligne JSON par tentative exécutée avec le statut, les chemins produits et l'erreur éventuelle. Les écritures de fichiers sont atomiques. Avec `resume=True`, un document n'est sauté que si tous les artefacts demandés existent déjà ; un document partiellement terminé ne retélécharge que ce qui manque.
+Les écritures sont atomiques. La reprise vérifie chaque artefact demandé et ne récupère que ce qui manque. Une erreur sur un ARK est enregistrée sans interrompre les suivants. Les ARK et les vues sont dédupliqués en conservant leur ordre.
 
-Les ARK sont normalisés et dédupliqués en conservant leur ordre. Une erreur sur un ARK est enregistrée et n'interrompt pas les suivants. `KeyboardInterrupt` et les autres exceptions système ne sont pas absorbées.
+`alto=True` ou `images=True` exige `views=[...]`. Le SDK ne traduit jamais implicitement cette demande en « toutes les pages », afin d'éviter un téléchargement massif accidentel.
 
-La V1 de `Corpus` reste volontairement synchrone : elle réutilise le transport central du SDK, donc les quotas et retries des primitives restent appliqués. Il n'existe pas encore de parallélisme qui pourrait court-circuiter ces limites.
+Référence complète : [`docs/corpus.md`](docs/corpus.md).
 
 ## Surface publique actuelle
 
@@ -158,11 +147,11 @@ Corpus.fetch() -> CorpusReport
 
 Modèles publics : `DublinCoreRecord`, `SearchResults`, `DocumentMetadata`, `ContentSearchItem`, `ContentSearchResults`, `Corpus`, `CorpusItemResult`, `CorpusReport`.
 
-`Page.image()` utilise une largeur prudente de 1000 px par défaut. Les requêtes de largeur supérieure à 1000 px sont classées dans le bucket haute définition et limitées par le transport. Les appels `.texteBrut` utilisent un bucket de 12,5 secondes afin de rester sous le quota public documenté de 5/minute.
+`Page.image()` utilise 1000 px par défaut. Les largeurs supérieures à 1000 px passent par le bucket haute définition. `.texteBrut` utilise un bucket de 12,5 secondes afin de rester sous le quota public documenté de 5/minute.
 
-### Pourquoi le PDF n'est pas encore exposé
+### PDF
 
-Les deux formes historiques testées le 2 septembre 2026, `f1n1.pdf` puis `f1.pdf`, ont répondu HTTP 200 avec du HTML depuis un runner GitHub public au lieu d'un flux PDF. Le SDK ne fournit donc pas de méthode `pdf()` tant qu'un contrat public automatisable n'est pas caractérisé de manière reproductible.
+Les formes historiques `f1n1.pdf` et `f1.pdf` testées le 2 septembre 2026 ont répondu HTTP 200 avec du HTML depuis un runner GitHub public au lieu d'un flux PDF. Le SDK ne fournit donc pas de méthode `pdf()` tant qu'un contrat automatisable n'est pas caractérisé de manière reproductible.
 
 ## Tests
 
@@ -171,22 +160,21 @@ pytest -m 'not live'
 pytest -m live tests/test_live.py
 ```
 
-La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un smoke test séparé depuis un runner GitHub public. Une primitive réseau n'est considérée supportée que si sa requête, son comportement simulé et un scénario live pertinent sont couverts.
+La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un smoke test séparé depuis un runner GitHub public.
 
-## Architecture et périmètre
+## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md) : mission, principes et non-objectifs.
-- [`docs/capabilities.md`](docs/capabilities.md) : matrice des services Gallica, contraintes et statut d'intégration.
+- [`docs/architecture.md`](docs/architecture.md) : mission, principes et non-objectifs ;
+- [`docs/capabilities.md`](docs/capabilities.md) : matrice des services et statut d'intégration ;
+- [`docs/corpus.md`](docs/corpus.md) : contrat détaillé de corpus, reprise, manifest et erreurs.
 
 Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage sur les wrappers historiques et leurs défauts. `gallica-sdk` n'en dépend pas et ne reprend pas son architecture legacy.
 
 ## Pas encore dans la 0.2
 
 - accès PDF automatisé ;
-- ALTO/images au niveau `Corpus` ;
+- sélection implicite de toutes les vues ;
 - exports DataFrame / Parquet ;
 - parallélisme / async ;
 - CLI ;
 - MCP.
-
-Ces fonctionnalités restent différées jusqu'à validation de la reprise et du manifest sur les primitives actuelles.
