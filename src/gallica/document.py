@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class Document:
-    _gallica: "Gallica"
+    _gallica: Gallica
     ark: str
 
     def metadata(self) -> str:
@@ -20,7 +20,7 @@ class Document:
         """Return the number of image views reported by Pagination."""
         return self._gallica._page_count(self.ark)
 
-    def page(self, number: int) -> "Page":
+    def page(self, number: int) -> Page:
         if number < 1:
             raise ValueError("page number must be >= 1")
         return Page(self._gallica, self.ark, number)
@@ -28,7 +28,7 @@ class Document:
 
 @dataclass(frozen=True, slots=True)
 class Page:
-    _gallica: "Gallica"
+    _gallica: Gallica
     ark: str
     number: int
 
