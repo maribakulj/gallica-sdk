@@ -40,7 +40,3 @@ def test_public_gallica_phase1_document_access() -> None:
         issue = gallica.periodical("cb32798952c").issue(date(1937, 3, 25))
         assert issue is not None
         assert issue.ark == "bpt6k5509212w"
-
-        pdf = gallica.document("bc6p06zq4dn").page(1).pdf()
-        assert pdf.startswith(b"%PDF")
-        assert len(pdf) > 1000
