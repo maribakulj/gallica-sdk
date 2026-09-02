@@ -154,7 +154,7 @@ class Corpus:
                     metadata_path=str(metadata_file) if metadata else None,
                     text_path=str(text_file) if text else None,
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - per-item failure isolation is the contract
                 item = CorpusItemResult(
                     ark=ark,
                     status="error",
