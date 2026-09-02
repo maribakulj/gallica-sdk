@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import re
+import xml.etree.ElementTree as ET
+from typing import Self, cast
 from urllib.parse import quote
 
 from .ark import ark_uri, normalize_ark
+from .document import Document
 from .transport import Transport
 
 BASE_URL = "https://gallica.bnf.fr"
@@ -18,15 +21,13 @@ class Gallica:
     def close(self) -> None:
         self._transport.close()
 
-    def __enter__(self) -> Gallica:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         self.close()
 
-    def document(self, ark: str) -> "Document":
-        from .document import Document
-
+    def document(self, ark: str) -> Document:
         return Document(self, normalize_ark(ark))
 
     def search(
@@ -64,8 +65,6 @@ class Gallica:
         return response.text
 
     def _page_count(self, ark: str) -> int:
-        import xml.etree.ElementTree as ET
-
         response = self._transport.get(
             f"{BASE_URL}/services/Pagination", params={"ark": normalize_ark(ark)}
         )
@@ -89,13 +88,11 @@ class Gallica:
     def _iiif_info(self, ark: str, view: int) -> dict[str, object]:
         if view < 1:
             raise ValueError("view must be >= 1")
-        response = self._transport.get(
-            f"{BASE_URL}/iiif/{ark_uri(ark)}/f{view}/info.json"
-        )
-        payload = response.json()
+        response = self._transport.get(f"{BASE_URL}/iiif/{ark_uri(ark)}/f{view}/info.json")
+        payload: object = response.json()
         if not isinstance(payload, dict):
-            raise ValueError("IIIF info response is not a JSON object")
-        return payload
+            raise TypeError("IIIF info response is not a JSON object")
+        return cast(dict[str, object], payload)
 
     @staticmethod
     def _iiif_bucket(size: str) -> str:
