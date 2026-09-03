@@ -1,14 +1,61 @@
 # gallica-sdk
 
-`gallica-sdk` est une bibliothèque Python légère pour accéder directement aux API publiques Gallica avec une interface cohérente, typée et testable.
+`gallica-sdk` est une couche de référence programmable et vérifiée pour accéder aux services publics Gallica.
 
-Le projet ne crée pas une nouvelle API réseau. Il fournit une façade Python mince au-dessus des services Gallica pour les développeurs, notebooks, pipelines et outils automatisés.
+Le projet fournit deux choses liées mais distinctes :
+
+1. un SDK Python léger pour notebooks, scripts et pipelines ;
+2. une représentation machine-readable des capacités, contraintes et services Gallica afin qu'un agent puisse raisonner sur une base validée plutôt que reconstruire l'API à chaque session.
+
+Le projet ne crée pas une nouvelle API réseau et ne remplace pas la documentation BnF. Les services publics et la documentation BnF restent l'autorité ; `gallica-sdk` fournit une connaissance opérationnelle testée de leur utilisation.
 
 ## Statut
 
-**0.2.0.dev0 — corpus reprenable, recherche paginée et contrats lisibles par agents.**
+**0.2.0.dev0 — corpus reprenable, recherche paginée, packaging vérifié et référence programmable.**
 
 Le SDK couvre recherche SRU, métadonnées OAIRecord, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR, résolution de numéros de périodiques et traitement de corpus reprenable. SRU, OAIRecord et ContentSearch sont transformés en objets Python typés tout en conservant le XML original dans `raw_xml`.
+
+## Référence programmable
+
+Un agent n'a pas besoin d'installer le package pour découvrir le périmètre validé du projet. Le dépôt publie :
+
+```text
+reference/
+├── gallica-reference.json
+└── schema.json
+```
+
+`reference/gallica-reference.json` fournit :
+
+- les services Gallica actuellement connus du projet ;
+- leur statut (`live-validated` ou `not-supported`) ;
+- leurs URLs de base et sources documentaires ;
+- les contraintes opérationnelles importantes ;
+- un index de toutes les capacités publiques du SDK ;
+- les invariants de validation du projet.
+
+Le manifeste est versionné (`schema_version: 1.0`) et vérifié par CI contre la représentation Python canonique. Il peut être régénéré avec :
+
+```bash
+python scripts/export_reference.py
+```
+
+Les signatures détaillées restent disponibles via :
+
+```bash
+python scripts/export_capabilities.py
+```
+
+ou directement :
+
+```python
+from gallica import capabilities, programmable_reference
+
+print(programmable_reference())
+print(capabilities())
+```
+
+Cette séparation est volontaire : la référence de découverte reste petite et stable, tandis que le contrat détaillé expose paramètres, types, valeurs par défaut et contraintes de chaque opération.
 
 ## Installation de développement
 
@@ -47,7 +94,7 @@ with Gallica() as g:
         print(record.ark, record.title)
 ```
 
-`search_all()` est paresseux : les pages SRU sont demandées au fur et à mesure de l'itération. `page_size` reste limité à 50, conformément au contrat SRU utilisé par le SDK.
+`search_all()` est paresseux : les pages SRU sont demandées au fur et à mesure de l'itération. `page_size` reste limité à 50.
 
 Export JSONL d'une page de résultats :
 
@@ -60,8 +107,6 @@ with Gallica() as g:
 Chaque ligne conserve tous les champs Dublin Core sous forme de listes et ajoute l'ARK normalisé lorsqu'il est identifiable.
 
 ## Recherche vers corpus
-
-Le passage d'une page de résultats à un corpus ne demande pas de recopier les identifiants :
 
 ```python
 with Gallica() as g:
@@ -144,21 +189,6 @@ with Gallica() as g:
     )
 ```
 
-Disposition :
-
-```text
-corpus/
-├── manifest.jsonl
-└── documents/
-    └── <ark>/
-        ├── metadata.json
-        ├── text.txt
-        └── pages/
-            └── 1/
-                ├── alto.xml
-                └── image.jpg
-```
-
 Les écritures sont atomiques. La reprise vérifie chaque artefact demandé et ne récupère que ce qui manque. Une erreur sur un ARK est enregistrée sans interrompre les suivants. Les ARK et les vues sont dédupliqués en conservant leur ordre.
 
 `alto=True` ou `images=True` exige `views=[...]`. Le SDK ne traduit jamais implicitement cette demande en « toutes les pages ».
@@ -167,7 +197,7 @@ Référence complète : [`docs/corpus.md`](docs/corpus.md).
 
 ## Agents et génération de scripts
 
-Le SDK ne contient pas de LLM et ne génère pas lui-même de code. Il expose au contraire un contrat canonique suffisamment précis pour qu'un agent disposant de Python ou d'un terminal puisse découvrir la surface supportée puis écrire un script adapté.
+Le SDK ne contient pas de LLM et ne génère pas lui-même de code. Un agent peut d'abord lire `reference/gallica-reference.json`, puis utiliser le contrat détaillé pour écrire le script adapté.
 
 ```python
 from gallica import Gallica
@@ -176,21 +206,17 @@ for capability in Gallica.capabilities():
     print(capability["id"], capability["call"], capability["constraints"])
 ```
 
-Export JSON :
+`agent/recipes.json` fournit des compositions courantes qui référencent les mêmes identifiants de capacités, et les tests empêchent recettes, contrats et référence publiée de dériver silencieusement de l'API Python réelle.
 
-```bash
-python scripts/export_capabilities.py > capabilities.json
-```
+Pour les agents de développement, le dépôt fournit [`AGENTS.md`](AGENTS.md). La référence détaillée est dans [`docs/agents.md`](docs/agents.md).
 
-Les contrats incluent désormais `search_all` et ses contraintes de pagination. `agent/recipes.json` fournit des compositions courantes qui référencent les mêmes identifiants de capacités, et `tests/test_agent_contracts.py` empêche ces recettes et contrats de dériver silencieusement de l'API Python réelle.
-
-Pour les agents de développement, le dépôt fournit aussi [`AGENTS.md`](AGENTS.md). La référence détaillée est dans [`docs/agents.md`](docs/agents.md).
-
-Cette couche n'est pas un MCP. Elle reste du Python et du JSON au-dessus du même SDK. Un MCP éventuel pourra être ajouté plus tard uniquement si un cas d'usage justifie réellement ce protocole supplémentaire.
+Cette couche n'est pas un MCP. Un MCP éventuel pourra être ajouté plus tard uniquement si un cas d'usage justifie réellement ce protocole supplémentaire.
 
 ## Surface publique actuelle
 
 ```text
+programmable_reference() -> ReferenceSpec
+capabilities() -> tuple[CapabilitySpec, ...]
 Gallica.capabilities() -> tuple[CapabilitySpec, ...]
 Gallica.search() -> SearchResults
 Gallica.search_all() -> Iterator[DublinCoreRecord]
@@ -212,8 +238,6 @@ Periodical.issue() -> Document | None
 Corpus.fetch() -> CorpusReport
 ```
 
-Modèles publics : `DublinCoreRecord`, `SearchResults`, `DocumentMetadata`, `ContentSearchItem`, `ContentSearchResults`, `Corpus`, `CorpusItemResult`, `CorpusReport`, `CapabilitySpec`.
-
 `Page.image()` utilise 1000 px par défaut. Les largeurs supérieures à 1000 px passent par le bucket haute définition. `.texteBrut` utilise un bucket de 12,5 secondes afin de rester sous le quota public documenté de 5/minute.
 
 ### PDF
@@ -227,10 +251,12 @@ pytest -m 'not live'
 pytest -m live tests/test_live.py tests/test_live_usability.py
 ```
 
-La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un smoke test séparé depuis un runner GitHub public. Elle construit aussi le `sdist` et le wheel, réinstalle le wheel produit et vérifie que le package importé expose encore ses contrats. On ne se contente donc plus de savoir que le checkout editable fonctionne.
+La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un smoke test séparé depuis un runner GitHub public. Elle construit aussi le `sdist` et le wheel, réinstalle le wheel produit et vérifie que le package importé expose encore ses contrats.
 
 ## Documentation
 
+- [`reference/gallica-reference.json`](reference/gallica-reference.json) : manifeste de découverte machine-readable ;
+- [`reference/schema.json`](reference/schema.json) : schéma JSON de la référence ;
 - [`docs/architecture.md`](docs/architecture.md) : mission, principes et non-objectifs ;
 - [`docs/capabilities.md`](docs/capabilities.md) : matrice des services et statut d'intégration ;
 - [`docs/corpus.md`](docs/corpus.md) : contrat détaillé de corpus, reprise, manifest et erreurs ;
