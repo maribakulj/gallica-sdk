@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/maribakulj/gallica-sdk/reference/schema.json",
+  "title": "Gallica programmable reference",
+  "type": "object",
+  "required": [
+    "id",
+    "schema_version",
+    "purpose",
+    "implementation",
+    "authority",
+    "capabilities_export",
+    "services",
+    "capability_index",
+    "invariants"
+  ],
+  "properties": {
+    "id": {"const": "gallica-sdk-reference"},
+    "schema_version": {"type": "string"},
+    "purpose": {"type": "string"},
+    "implementation": {"type": "string"},
+    "authority": {"type": "string"},
+    "capabilities_export": {"type": "string"},
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "kind", "status", "base_url", "documentation", "notes"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "kind": {"type": "string"},
+          "status": {"enum": ["live-validated", "not-supported"]},
+          "base_url": {"type": "string"},
+          "documentation": {"type": "array", "items": {"type": "string"}},
+          "notes": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
+    "capability_index": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "call"],
+        "properties": {
+          "id": {"type": "string"},
+          "call": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "invariants": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}
