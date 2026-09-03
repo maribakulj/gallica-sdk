@@ -10,6 +10,7 @@ from .models import (
     SearchResults,
 )
 from .periodical import Periodical
+from .reference import ReferenceSpec, programmable_reference
 
 __all__ = [
     "CapabilitySpec",
@@ -24,6 +25,8 @@ __all__ = [
     "Gallica",
     "Page",
     "Periodical",
+    "ReferenceSpec",
     "SearchResults",
     "capabilities",
+    "programmable_reference",
 ]
