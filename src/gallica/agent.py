@@ -52,7 +52,7 @@ CAPABILITIES: tuple[CapabilitySpec, ...] = (
     {
         "id": "search",
         "call": "Gallica.search",
-        "description": "Search Gallica through SRU 1.2 and return typed Dublin Core records.",
+        "description": "Search Gallica through SRU 1.2 and return one typed result page.",
         "returns": "SearchResults",
         "network_service": "SRU 1.2",
         "parameters": (
@@ -61,6 +61,23 @@ CAPABILITIES: tuple[CapabilitySpec, ...] = (
             {"name": "maximum_records", "type": "int", "required": False, "default": 50},
         ),
         "constraints": ("maximum_records must be between 1 and 50",),
+    },
+    {
+        "id": "search_all",
+        "call": "Gallica.search_all",
+        "description": "Iterate lazily over paginated SRU results without manually managing startRecord.",
+        "returns": "Iterator[DublinCoreRecord]",
+        "network_service": "SRU 1.2",
+        "parameters": (
+            {"name": "query", "type": "str", "required": True, "description": "SRU/CQL query."},
+            {"name": "limit", "type": "int | None", "required": False, "default": None},
+            {"name": "page_size", "type": "int", "required": False, "default": 50},
+        ),
+        "constraints": (
+            "page_size must be between 1 and 50",
+            "limit must be >= 1 when supplied",
+            "results are fetched lazily page by page",
+        ),
     },
     {
         "id": "document_metadata",

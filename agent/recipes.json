@@ -2,12 +2,22 @@
   "recipes": [
     {
       "id": "search_then_fetch_metadata",
-      "description": "Search Gallica, collect ARKs from the typed SRU results, then build a resumable metadata corpus.",
-      "capabilities": ["search", "corpus_fetch"],
+      "description": "Search Gallica, collect ARKs from typed SRU results, then build a resumable metadata corpus.",
+      "capabilities": ["search", "corpus", "corpus_fetch"],
       "notes": [
-        "Use record.ark from SearchResults records.",
+        "Use SearchResults.arks to pass one inspected result page directly to Gallica.corpus().",
         "Keep maximum_records <= 50 per SRU request.",
         "Use resume=true for repeatable corpus runs."
+      ]
+    },
+    {
+      "id": "paginated_search_pipeline",
+      "description": "Iterate lazily over more than one SRU result page without manually managing startRecord.",
+      "capabilities": ["search_all"],
+      "notes": [
+        "Use limit when the task needs a bounded number of records.",
+        "Keep page_size <= 50.",
+        "The iterator performs network requests lazily as records are consumed."
       ]
     },
     {

@@ -6,7 +6,7 @@ Le projet ne crée pas une nouvelle API réseau. Il fournit une façade Python m
 
 ## Statut
 
-**0.2.0.dev0 — corpus reprenable et contrats lisibles par agents.**
+**0.2.0.dev0 — corpus reprenable, recherche paginée et contrats lisibles par agents.**
 
 Le SDK couvre recherche SRU, métadonnées OAIRecord, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR, résolution de numéros de périodiques et traitement de corpus reprenable. SRU, OAIRecord et ContentSearch sont transformés en objets Python typés tout en conservant le XML original dans `raw_xml`.
 
@@ -22,6 +22,8 @@ Python 3.11+ est requis.
 
 ## Recherche SRU
 
+Une page inspectable :
+
 ```python
 from gallica import Gallica
 
@@ -29,12 +31,50 @@ with Gallica() as g:
     results = g.search('gallica all "Verdun"', maximum_records=10)
 
     print(results.total)
+    print(results.arks)
     for record in results:
         print(record.ark, record.title)
         print(record.values("creator"))
 ```
 
 Les champs Dublin Core sont répétables. Le XML source reste disponible dans `results.raw_xml`.
+
+Pour parcourir plusieurs pages sans manipuler `startRecord` :
+
+```python
+with Gallica() as g:
+    for record in g.search_all('gallica all "Verdun"', limit=200, page_size=50):
+        print(record.ark, record.title)
+```
+
+`search_all()` est paresseux : les pages SRU sont demandées au fur et à mesure de l'itération. `page_size` reste limité à 50, conformément au contrat SRU utilisé par le SDK.
+
+Export JSONL d'une page de résultats :
+
+```python
+with Gallica() as g:
+    results = g.search('gallica all "Verdun"', maximum_records=50)
+    results.write_jsonl("./verdun.jsonl")
+```
+
+Chaque ligne conserve tous les champs Dublin Core sous forme de listes et ajoute l'ARK normalisé lorsqu'il est identifiable.
+
+## Recherche vers corpus
+
+Le passage d'une page de résultats à un corpus ne demande pas de recopier les identifiants :
+
+```python
+with Gallica() as g:
+    results = g.search('gallica all "Verdun"', maximum_records=20)
+    report = g.corpus(results.arks).fetch(
+        "./corpus",
+        metadata=True,
+        text=False,
+        resume=True,
+    )
+```
+
+Un exemple exécutable est fourni dans [`examples/search_to_corpus.py`](examples/search_to_corpus.py).
 
 ## Document
 
@@ -142,7 +182,7 @@ Export JSON :
 python scripts/export_capabilities.py > capabilities.json
 ```
 
-Les contrats décrivent aussi comment construire `Document`, `Periodical` et `Corpus`. `agent/recipes.json` fournit des compositions courantes qui référencent les mêmes identifiants de capacités, et `tests/test_agent_contracts.py` empêche ces recettes et contrats de dériver silencieusement de l'API Python réelle.
+Les contrats incluent désormais `search_all` et ses contraintes de pagination. `agent/recipes.json` fournit des compositions courantes qui référencent les mêmes identifiants de capacités, et `tests/test_agent_contracts.py` empêche ces recettes et contrats de dériver silencieusement de l'API Python réelle.
 
 Pour les agents de développement, le dépôt fournit aussi [`AGENTS.md`](AGENTS.md). La référence détaillée est dans [`docs/agents.md`](docs/agents.md).
 
@@ -153,9 +193,12 @@ Cette couche n'est pas un MCP. Elle reste du Python et du JSON au-dessus du mêm
 ```text
 Gallica.capabilities() -> tuple[CapabilitySpec, ...]
 Gallica.search() -> SearchResults
+Gallica.search_all() -> Iterator[DublinCoreRecord]
 Gallica.document() -> Document
 Gallica.periodical() -> Periodical
 Gallica.corpus() -> Corpus
+SearchResults.arks -> tuple[str, ...]
+SearchResults.write_jsonl() -> Path
 Document.metadata() -> DocumentMetadata
 Document.page_count() -> int
 Document.text() -> str
@@ -177,14 +220,14 @@ Modèles publics : `DublinCoreRecord`, `SearchResults`, `DocumentMetadata`, `Con
 
 Les formes historiques `f1n1.pdf` et `f1.pdf` testées le 2 septembre 2026 ont répondu HTTP 200 avec du HTML depuis un runner GitHub public au lieu d'un flux PDF. Le SDK ne fournit donc pas de méthode `pdf()` tant qu'un contrat automatisable n'est pas caractérisé de manière reproductible.
 
-## Tests
+## Tests et packaging
 
 ```bash
 pytest -m 'not live'
-pytest -m live tests/test_live.py
+pytest -m live tests/test_live.py tests/test_live_usability.py
 ```
 
-La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un smoke test séparé depuis un runner GitHub public.
+La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un smoke test séparé depuis un runner GitHub public. Elle construit aussi le `sdist` et le wheel, réinstalle le wheel produit et vérifie que le package importé expose encore ses contrats. On ne se contente donc plus de savoir que le checkout editable fonctionne.
 
 ## Documentation
 
@@ -200,7 +243,7 @@ Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage su
 
 - accès PDF automatisé ;
 - sélection implicite de toutes les vues ;
-- exports DataFrame / Parquet ;
+- export Parquet / DataFrame intégré ;
 - parallélisme / async ;
 - CLI ;
 - MCP.

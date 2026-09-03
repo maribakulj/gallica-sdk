@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +36,12 @@ class DublinCoreRecord:
                 return tail.split("/", 1)[0]
         return None
 
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "ark": self.ark,
+            "fields": {name: list(values) for name, values in self.fields.items()},
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class SearchResults:
@@ -47,6 +55,19 @@ class SearchResults:
 
     def __len__(self) -> int:
         return len(self.records)
+
+    @property
+    def arks(self) -> tuple[str, ...]:
+        return tuple(record.ark for record in self.records if record.ark is not None)
+
+    def write_jsonl(self, path: str | Path) -> Path:
+        output = Path(path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("w", encoding="utf-8") as stream:
+            for record in self.records:
+                stream.write(json.dumps(record.as_dict(), ensure_ascii=False, sort_keys=True))
+                stream.write("\n")
+        return output
 
 
 @dataclass(frozen=True, slots=True)
