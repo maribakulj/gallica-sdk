@@ -18,14 +18,20 @@ class ServiceSpec(TypedDict):
     notes: tuple[str, ...]
 
 
+class CapabilityIndexSpec(TypedDict):
+    id: str
+    call: str
+
+
 class ReferenceSpec(TypedDict):
     id: str
     schema_version: str
     purpose: str
     implementation: str
     authority: str
+    capabilities_export: str
     services: tuple[ServiceSpec, ...]
-    capabilities: tuple[object, ...]
+    capability_index: tuple[CapabilityIndexSpec, ...]
     invariants: tuple[str, ...]
 
 
@@ -121,7 +127,7 @@ SERVICES: tuple[ServiceSpec, ...] = (
 
 
 def programmable_reference() -> ReferenceSpec:
-    """Return the canonical machine-readable Gallica operational reference."""
+    """Return the canonical compact discovery manifest for Gallica operations."""
     return {
         "id": REFERENCE_ID,
         "schema_version": REFERENCE_SCHEMA_VERSION,
@@ -134,8 +140,11 @@ def programmable_reference() -> ReferenceSpec:
             "This project is an independent reference layer; BnF public documentation "
             "and live services remain authoritative."
         ),
+        "capabilities_export": "python scripts/export_capabilities.py",
         "services": SERVICES,
-        "capabilities": capabilities(),
+        "capability_index": tuple(
+            {"id": spec["id"], "call": spec["call"]} for spec in capabilities()
+        ),
         "invariants": (
             "A network capability is not marked supported without a relevant public live test.",
             "Raw XML remains available when the SDK exposes a structured XML-derived model.",
