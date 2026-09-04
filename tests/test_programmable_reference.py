@@ -86,9 +86,13 @@ def test_evidence_targets_exist_in_repository() -> None:
             assert f"def {node}(" in source, item["target"]
 
 
-def test_reference_schema_version_is_v1_2() -> None:
-    assert REFERENCE_SCHEMA_VERSION == "1.2"
+def test_reference_schema_version_is_v2_0() -> None:
+    assert REFERENCE_SCHEMA_VERSION == "2.0"
+    reference = programmable_reference()
+    assert reference["operational_contracts_export"] == "python scripts/export_operational_contracts.py"
+
     schema = json.loads(Path("reference/schema.json").read_text(encoding="utf-8"))
     assert schema["properties"]["id"]["const"] == "gallica-sdk-reference"
+    assert "operational_contracts_export" in schema["required"]
     assert "observed_at" in schema["properties"]["evidence"]["items"]["properties"]
     assert "freshness_days" in schema["properties"]["evidence"]["items"]["properties"]
