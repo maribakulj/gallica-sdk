@@ -11,7 +11,7 @@ Le projet ne crée pas une nouvelle API réseau et ne remplace pas la documentat
 
 ## Statut
 
-**0.2.0.dev0 — corpus reprenable, recherche paginée, packaging vérifié, référence programmable, provenance des preuves et notebooks exécutés en CI.**
+**0.2.0.dev0 — corpus reprenable, recherche paginée, packaging vérifié, référence programmable, contrats opérationnels résolus, provenance des preuves et notebooks exécutés en CI.**
 
 Aucune release stable n'est encore publiée. Le dépôt prépare sa première release publique.
 
@@ -127,24 +127,52 @@ reference/
 └── schema.json
 ```
 
-Le manifeste est actuellement en `schema_version: 1.2` et expose les services, l'index des capacités, les preuves live, leur provenance et les invariants du projet.
+Le manifeste est actuellement en `schema_version: 2.0`. Il expose les services, l'index des capacités, les preuves live, leur provenance et les invariants du projet, ainsi que les commandes d'export des contrats détaillés et opérationnels.
 
-Avec Python :
+### Contrat minimal
+
+`capabilities()` fournit la surface compacte : appel Python, paramètres, type de retour et contraintes.
 
 ```python
-from gallica import capabilities, evidence_freshness, programmable_reference
+from gallica import capabilities
 
-print(programmable_reference())
-print(capabilities())
-print(evidence_freshness())
+for capability in capabilities():
+    print(capability["id"], capability["call"])
 ```
 
-Les contrats détaillés peuvent être exportés avec :
+### Contrat opérationnel résolu
+
+Pour un agent qui doit décider comment exécuter réellement une opération, `operational_contract()` résout en une structure unique :
+
+- signature et paramètres ;
+- contraintes ;
+- sémantique de sortie ;
+- media type source ;
+- erreurs attendues ;
+- services Gallica concernés ;
+- preuves live ;
+- fraîcheur de ces preuves ;
+- exemple lié lorsqu'il existe.
+
+```python
+from gallica import operational_contract
+
+contract = operational_contract("page_alto")
+print(contract["call"])
+print(contract["services"])
+print(contract["errors"])
+print(contract["freshness"])
+```
+
+Tous les contrats peuvent être exportés en JSON :
 
 ```bash
 python scripts/export_capabilities.py > capabilities.json
+python scripts/export_operational_contracts.py > operational-contracts.json
 python scripts/export_reference.py > reference.json
 ```
+
+Le contrat opérationnel est assemblé depuis les sources canoniques existantes. Il ne constitue pas une seconde vérité indépendante qui recopierait services et preuves.
 
 Documentation agent : [`docs/agents.md`](docs/agents.md). Preuves et fraîcheur : [`docs/evidence.md`](docs/evidence.md).
 
@@ -179,6 +207,8 @@ Le SDK ne fournit pas `pdf()`. Les formes historiques `f1n1.pdf` et `f1.pdf` tes
 __version__ -> str
 programmable_reference() -> ReferenceSpec
 capabilities() -> tuple[CapabilitySpec, ...]
+operational_contracts() -> tuple[OperationalContract, ...]
+operational_contract(id) -> OperationalContract
 evidence() -> tuple[EvidenceSpec, ...]
 capability_evidence() -> tuple[CapabilityEvidence, ...]
 evidence_freshness() -> tuple[EvidenceFreshness, ...]
