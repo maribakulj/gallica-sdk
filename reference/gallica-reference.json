@@ -1,10 +1,11 @@
 {
   "id": "gallica-sdk-reference",
-  "schema_version": "1.2",
+  "schema_version": "2.0",
   "purpose": "Verified operational knowledge for humans, notebooks, pipelines and agents using public Gallica services.",
   "implementation": "gallica-sdk",
   "authority": "This project is an independent reference layer; BnF public documentation and live services remain authoritative.",
   "capabilities_export": "python scripts/export_capabilities.py",
+  "operational_contracts_export": "python scripts/export_operational_contracts.py",
   "services": [
     {"id": "sru", "name": "Gallica SRU 1.2", "kind": "search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/SRU", "documentation": ["https://api.bnf.fr/"], "notes": ["maximumRecords is capped at 50 by the SDK"]},
     {"id": "oai-record", "name": "Gallica OAIRecord", "kind": "metadata", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/OAIRecord", "documentation": ["https://api.bnf.fr/"], "notes": ["Dublin Core values may repeat"]},
@@ -64,6 +65,7 @@
     "Evidence freshness is evaluated separately from support status and can become stale without changing the historical observation.",
     "Every service/evidence reference in capability_evidence must resolve in this manifest.",
     "Every public capability must have exactly one capability_evidence record.",
+    "Operational contracts resolve canonical capabilities, services and evidence rather than duplicating them as independent truth.",
     "Raw XML remains available when the SDK exposes a structured XML-derived model.",
     "Corpus page downloads never imply all pages; views must be explicit.",
     "Rate-limit behavior is centralized in the shared transport.",

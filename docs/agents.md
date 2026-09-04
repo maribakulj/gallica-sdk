@@ -1,54 +1,70 @@
 # Utilisation par des agents
 
-`gallica-sdk` n'embarque pas de modèle génératif et ne génère pas lui-même des scripts. Il expose une surface Python typée, une référence programmable et des preuves de validation afin qu'un agent puisse comprendre les opérations supportées, leurs paramètres, leurs contraintes et leur niveau d'observation sans reconstruire les API Gallica à partir d'exemples fragiles.
+`gallica-sdk` n'embarque pas de modèle génératif et ne génère pas lui-même des scripts. Il expose une surface Python typée, une référence programmable et des preuves de validation afin qu'un agent puisse comprendre les opérations supportées sans reconstruire les API Gallica à partir d'exemples fragiles.
 
-## Points d'entrée machine-readable
+## Trois niveaux de découverte
 
-Pour découvrir le périmètre global sans installer le package, un agent peut lire :
+### 1. Référence de découverte
+
+Sans installer le package, lire :
 
 ```text
 reference/gallica-reference.json
 ```
 
-Ce manifeste indexe les services, les capacités, les preuves et leur provenance. Il est validé contre la représentation Python canonique.
+Ce manifeste versionné indexe services, capacités, preuves, provenance et commandes d'export. Il reste volontairement compact.
+
+### 2. Contrat minimal de signature
 
 Avec le package installé :
 
 ```python
-from gallica import capabilities, evidence, evidence_freshness, programmable_reference
+from gallica import capabilities
 
-reference = programmable_reference()
-contracts = capabilities()
-proofs = evidence()
-freshness = evidence_freshness()
+for capability in capabilities():
+    print(capability["id"], capability["call"], capability["parameters"])
 ```
 
-Le contrat détaillé des capacités peut aussi être exporté en JSON :
+`capabilities()` est approprié lorsqu'un agent a surtout besoin de savoir quelles méthodes existent, quels paramètres elles acceptent et quelles contraintes immédiates s'appliquent.
+
+### 3. Contrat opérationnel résolu
+
+Lorsqu'un agent doit décider comment exécuter une opération et évaluer son niveau de confiance :
+
+```python
+from gallica import operational_contract
+
+contract = operational_contract("page_alto")
+print(contract["parameters"])
+print(contract["services"])
+print(contract["output_semantics"])
+print(contract["errors"])
+print(contract["evidence"])
+print(contract["freshness"])
+```
+
+Le contrat résolu contient :
+
+- l'identifiant stable et l'appel Python ;
+- les paramètres et contraintes ;
+- le type retourné ;
+- le media type source lorsqu'il est pertinent ;
+- la sémantique de sortie ;
+- les erreurs attendues ;
+- les services Gallica concernés ;
+- les preuves live liées ;
+- leur fraîcheur ;
+- l'exemple associé lorsqu'il existe.
+
+Il est construit à partir des contrats, services et preuves canoniques existants. Ce n'est pas une copie indépendante destinée à dériver discrètement six mois plus tard.
+
+Tous les contrats résolus sont exportables :
 
 ```bash
 python scripts/export_capabilities.py > capabilities.json
+python scripts/export_operational_contracts.py > operational-contracts.json
+python scripts/export_reference.py > reference.json
 ```
-
-La référence de découverte peut être régénérée avec :
-
-```bash
-python scripts/export_reference.py
-```
-
-Les sources canoniques sont dans `src/gallica/agent.py`, `src/gallica/reference.py` et `src/gallica/evidence.py`. Les fichiers JSON publiés ne constituent pas une seconde description indépendante.
-
-Chaque capacité fournit notamment :
-
-- un identifiant stable ;
-- l'appel Python correspondant ;
-- une description ;
-- le type retourné ;
-- les paramètres ;
-- les contraintes importantes.
-
-Le graphe de référence relie ensuite chaque capacité réseau aux services Gallica et aux preuves live pertinentes. Une preuve live enregistre son test cible, sa date d'observation, le commit testé, le run CI et une fenêtre de fraîcheur.
-
-Les capacités incluent aussi les constructeurs locaux `Gallica.document`, `Gallica.periodical` et `Gallica.corpus`, afin qu'un consommateur n'ait pas à deviner comment obtenir les objets sur lesquels les autres méthodes s'appliquent.
 
 ## Recettes
 
@@ -62,7 +78,7 @@ Exemples actuels :
 
 Une recette n'est pas un programme opaque. Elle indique un ordre d'opérations et les garde-fous à respecter ; l'agent produit ensuite le script Python adapté au besoin de l'utilisateur.
 
-## Exemple de génération de script par un agent
+## Exemple de génération de script
 
 Demande humaine :
 
@@ -71,7 +87,16 @@ Pour ces ARK, récupère les métadonnées et le texte, reprends si le traitemen
 et produis un rapport des erreurs.
 ```
 
-Le contrat permet à l'agent d'identifier `Gallica.corpus` et `Corpus.fetch`, puis de produire par exemple :
+Un agent peut d'abord inspecter :
+
+```python
+from gallica import operational_contract
+
+print(operational_contract("corpus"))
+print(operational_contract("corpus_fetch"))
+```
+
+puis produire :
 
 ```python
 from gallica import Gallica
@@ -90,13 +115,11 @@ for failure in report.failures:
     print(failure.ark, failure.error)
 ```
 
-La librairie n'a pas généré ce programme. Elle a fourni un vocabulaire et des contrats suffisamment explicites pour qu'un agent puisse le générer sans inventer des endpoints ou contourner les quotas.
+La librairie n'a pas généré le programme. Elle fournit un vocabulaire, des contrats et des preuves suffisamment explicites pour que l'agent n'ait pas à inventer des endpoints ou contourner les quotas.
 
 ## Interpréter les preuves
 
 `passing-in-ci` signifie qu'un test live a réussi lors de l'observation enregistrée. Ce statut n'est pas une garantie perpétuelle du service externe.
-
-Un agent peut utiliser :
 
 ```python
 from gallica import evidence_freshness
@@ -105,12 +128,12 @@ for item in evidence_freshness():
     print(item["id"], item["state"], item["age_days"])
 ```
 
-Une preuve `stale` reste une observation historique valide, mais elle doit normalement conduire l'agent à revalider le comportement avant de s'appuyer fortement sur un service externe susceptible d'avoir changé.
+Une preuve `stale` reste une observation historique valide, mais elle doit normalement conduire l'agent à revalider le comportement avant de s'appuyer fortement sur un service susceptible d'avoir changé.
 
-## Règles importantes pour les agents
+## Règles importantes
 
 - utiliser les primitives du SDK lorsqu'elles existent plutôt que reconstruire les URLs Gallica ;
-- consulter la référence programmable pour distinguer supporté, non supporté et fraîcheur des preuves ;
+- utiliser `operational_contract()` lorsqu'il faut connaître erreurs, services et preuves en plus de la signature ;
 - utiliser `raw_xml` lorsqu'une information n'est pas encore modélisée ;
 - conserver `maximum_records <= 50` pour SRU ;
 - ne pas contourner le throttling `.texteBrut` ;
@@ -120,27 +143,22 @@ Une preuve `stale` reste une observation historique valide, mais elle doit norma
 - considérer PDF comme non supporté tant qu'un contrat public reproductible n'est pas établi ;
 - ne pas introduire de concurrence qui contourne le transport partagé.
 
-## AGENTS.md
-
-Le fichier racine `AGENTS.md` donne aux agents de développement les contraintes du dépôt : architecture, commandes de validation et règles de quotas. Il vise les environnements qui lisent automatiquement ce type de fichier, tout en restant compréhensible par un développeur humain.
-
 ## Pourquoi pas MCP maintenant ?
 
-La référence programmable et le contrat machine-readable résolvent déjà le problème principal pour Claude Code, Codex ou un agent disposant de Python et d'un terminal : comprendre précisément quelles opérations sont disponibles et écrire du code dessus.
-
-Un serveur MCP ajouterait un protocole et un processus supplémentaires. Il ne sera pertinent que si un cas d'usage exige réellement des appels d'outils directs sans environnement Python. La couche actuelle est conçue pour pouvoir servir de base à un MCP futur sans en dépendre.
+La référence programmable, les contrats résolus et l'API Python couvrent déjà le besoin principal pour Claude Code, Codex ou un agent disposant de Python et d'un terminal. Un MCP ajouterait un protocole et un processus supplémentaires sans supprimer la nécessité de maintenir les contrats sous-jacents.
 
 ## Anti-dérive
 
 Les tests vérifient notamment :
 
 - l'unicité des identifiants ;
-- la sérialisation JSON des contrats ;
-- l'existence de chaque classe et méthode déclarée ;
-- la présence de garde-fous essentiels ;
-- la validité des identifiants référencés par les recettes ;
-- la résolution des liens capacité → service → preuve ;
-- l'égalité entre le manifeste JSON publié et la représentation Python canonique ;
+- la sérialisation JSON ;
+- l'existence des méthodes déclarées ;
+- la validité des recettes ;
+- la résolution capacité → service → preuve ;
+- la présence d'une sémantique de sortie et d'erreurs pour chaque contrat opérationnel ;
+- la présence de preuves live pour les contrats réseau ;
+- l'égalité entre le manifeste JSON publié et sa représentation Python canonique ;
 - la cohérence des versions de package, README et schéma de référence.
 
-Ainsi, la documentation machine-readable ne doit pas pouvoir annoncer tranquillement une méthode supprimée depuis trois versions, ce qui est malheureusement une fonctionnalité assez répandue de la documentation humaine.
+Ainsi, la documentation machine-readable ne doit pas pouvoir annoncer tranquillement une méthode supprimée depuis trois versions, sport documentaire qui avait déjà suffisamment d'adeptes avant l'arrivée des agents.
