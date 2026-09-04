@@ -4,9 +4,11 @@ from .corpus import Corpus, CorpusItemResult, CorpusReport
 from .document import Document, Page
 from .evidence import (
     CapabilityEvidence,
+    EvidenceFreshness,
     EvidenceSpec,
     capability_evidence,
     evidence,
+    evidence_freshness,
 )
 from .models import (
     ContentSearchItem,
@@ -29,6 +31,7 @@ __all__ = [
     "Document",
     "DocumentMetadata",
     "DublinCoreRecord",
+    "EvidenceFreshness",
     "EvidenceSpec",
     "Gallica",
     "Page",
@@ -38,5 +41,6 @@ __all__ = [
     "capabilities",
     "capability_evidence",
     "evidence",
+    "evidence_freshness",
     "programmable_reference",
 ]
