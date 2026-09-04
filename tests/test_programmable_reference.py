@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 from gallica.agent import capabilities
+from gallica.evidence import evidence_freshness
 from gallica.reference import REFERENCE_SCHEMA_VERSION, programmable_reference
 
 
@@ -34,11 +36,9 @@ def test_evidence_graph_resolves_all_references() -> None:
     capability_ids = {item["id"] for item in reference["capability_index"]}
     service_ids = {item["id"] for item in reference["services"]}
     evidence_ids = {item["id"] for item in reference["evidence"]}
-
     mappings = reference["capability_evidence"]
     assert {item["capability"] for item in mappings} == capability_ids
     assert len(mappings) == len(capability_ids)
-
     for item in mappings:
         assert set(item["services"]) <= service_ids
         assert set(item["evidence"]) <= evidence_ids
@@ -48,18 +48,32 @@ def test_evidence_graph_resolves_all_references() -> None:
 
 def test_live_validated_network_capabilities_have_live_evidence() -> None:
     reference = programmable_reference()
-    live_ids = {
-        item["id"]
-        for item in reference["evidence"]
-        if item["kind"] == "live-test" and item["status"] == "passing-in-ci"
-    }
-    network_service_ids = {
-        item["id"] for item in reference["services"] if item["status"] == "live-validated"
-    }
-
+    live_ids = {item["id"] for item in reference["evidence"] if item["kind"] == "live-test" and item["status"] == "passing-in-ci"}
+    network_service_ids = {item["id"] for item in reference["services"] if item["status"] == "live-validated"}
     for item in reference["capability_evidence"]:
         if set(item["services"]) & network_service_ids:
             assert set(item["evidence"]) & live_ids, item["capability"]
+
+
+def test_live_evidence_has_observation_provenance() -> None:
+    for item in programmable_reference()["evidence"]:
+        if item["kind"] != "live-test":
+            continue
+        assert item["observed_at"].endswith("Z")
+        assert len(item["observed_commit"]) == 40
+        assert item["observed_run"].startswith("https://github.com/")
+        assert item["freshness_days"] >= 1
+        assert item["confidence"] in {"high", "medium", "low"}
+
+
+def test_evidence_freshness_changes_without_rewriting_history() -> None:
+    fresh = {item["id"]: item for item in evidence_freshness(as_of=date(2026, 9, 4))}
+    stale = {item["id"]: item for item in evidence_freshness(as_of=date(2026, 10, 1))}
+    assert fresh["live.vertical_slice"]["state"] == "fresh"
+    assert fresh["live.vertical_slice"]["age_days"] == 0
+    assert stale["live.vertical_slice"]["state"] == "stale"
+    assert stale["live.vertical_slice"]["age_days"] == 27
+    assert fresh["example.search_to_corpus"]["state"] == "not-applicable"
 
 
 def test_evidence_targets_exist_in_repository() -> None:
@@ -72,9 +86,9 @@ def test_evidence_targets_exist_in_repository() -> None:
             assert f"def {node}(" in source, item["target"]
 
 
-def test_reference_schema_version_is_v1_1() -> None:
-    assert REFERENCE_SCHEMA_VERSION == "1.1"
+def test_reference_schema_version_is_v1_2() -> None:
+    assert REFERENCE_SCHEMA_VERSION == "1.2"
     schema = json.loads(Path("reference/schema.json").read_text(encoding="utf-8"))
     assert schema["properties"]["id"]["const"] == "gallica-sdk-reference"
-    assert "evidence" in schema["required"]
-    assert "capability_evidence" in schema["required"]
+    assert "observed_at" in schema["properties"]["evidence"]["items"]["properties"]
+    assert "freshness_days" in schema["properties"]["evidence"]["items"]["properties"]
