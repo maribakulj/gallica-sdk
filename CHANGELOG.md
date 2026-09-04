@@ -17,6 +17,8 @@ The project follows semantic versioning once a first public release is published
 - programmable Gallica service reference with JSON Schema;
 - capability → service → evidence graph;
 - live-validation provenance, observation timestamps and evidence freshness classification;
+- resolved operational contracts combining signature, output semantics, expected errors, services, evidence and freshness;
+- `operational_contract()` and `operational_contracts()` plus JSON export support;
 - user guides for search, documents/pages, periodicals, corpus, quotas and error behavior;
 - executable notebooks for search/metadata and resumable corpus workflows;
 - CI execution of the reference notebooks against public Gallica services;
@@ -26,6 +28,7 @@ The project follows semantic versioning once a first public release is published
 
 - project positioning expanded from a Python-only SDK to a verified programmable reference plus Python SDK;
 - package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;
+- programmable reference schema advanced to 2.0 to advertise the operational-contract export;
 - README is now a navigable entry point to task-focused documentation rather than the only user guide.
 
 ### Known limitations
