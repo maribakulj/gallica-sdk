@@ -12,6 +12,8 @@
     "capabilities_export",
     "services",
     "capability_index",
+    "evidence",
+    "capability_evidence",
     "invariants"
   ],
   "properties": {
@@ -46,6 +48,35 @@
         "properties": {
           "id": {"type": "string"},
           "call": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "status", "target", "description"],
+        "properties": {
+          "id": {"type": "string"},
+          "kind": {"enum": ["live-test", "example"]},
+          "status": {"enum": ["passing-in-ci", "checked-in"]},
+          "target": {"type": "string"},
+          "description": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "capability_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["capability", "services", "evidence", "example"],
+        "properties": {
+          "capability": {"type": "string"},
+          "services": {"type": "array", "items": {"type": "string"}},
+          "evidence": {"type": "array", "items": {"type": "string"}},
+          "example": {"type": ["string", "null"]}
         },
         "additionalProperties": false
       }

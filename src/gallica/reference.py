@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import TypedDict
 
 from .agent import capabilities
+from .evidence import CapabilityEvidence, EvidenceSpec, capability_evidence, evidence
 
-REFERENCE_SCHEMA_VERSION = "1.0"
+REFERENCE_SCHEMA_VERSION = "1.1"
 REFERENCE_ID = "gallica-sdk-reference"
 
 
@@ -32,6 +33,8 @@ class ReferenceSpec(TypedDict):
     capabilities_export: str
     services: tuple[ServiceSpec, ...]
     capability_index: tuple[CapabilityIndexSpec, ...]
+    evidence: tuple[EvidenceSpec, ...]
+    capability_evidence: tuple[CapabilityEvidence, ...]
     invariants: tuple[str, ...]
 
 
@@ -127,7 +130,7 @@ SERVICES: tuple[ServiceSpec, ...] = (
 
 
 def programmable_reference() -> ReferenceSpec:
-    """Return the canonical compact discovery manifest for Gallica operations."""
+    """Return the canonical discovery manifest with validation provenance."""
     return {
         "id": REFERENCE_ID,
         "schema_version": REFERENCE_SCHEMA_VERSION,
@@ -145,8 +148,12 @@ def programmable_reference() -> ReferenceSpec:
         "capability_index": tuple(
             {"id": spec["id"], "call": spec["call"]} for spec in capabilities()
         ),
+        "evidence": evidence(),
+        "capability_evidence": capability_evidence(),
         "invariants": (
             "A network capability is not marked supported without a relevant public live test.",
+            "Every service/evidence reference in capability_evidence must resolve in this manifest.",
+            "Every public capability must have exactly one capability_evidence record.",
             "Raw XML remains available when the SDK exposes a structured XML-derived model.",
             "Corpus page downloads never imply all pages; views must be explicit.",
             "Rate-limit behavior is centralized in the shared transport.",

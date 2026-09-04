@@ -29,7 +29,52 @@ def test_service_ids_are_unique_and_statuses_explicit() -> None:
     assert any(service["id"] == "pdf" and service["status"] == "not-supported" for service in services)
 
 
-def test_reference_schema_version_is_stable_v1() -> None:
-    assert REFERENCE_SCHEMA_VERSION == "1.0"
+def test_evidence_graph_resolves_all_references() -> None:
+    reference = programmable_reference()
+    capability_ids = {item["id"] for item in reference["capability_index"]}
+    service_ids = {item["id"] for item in reference["services"]}
+    evidence_ids = {item["id"] for item in reference["evidence"]}
+
+    mappings = reference["capability_evidence"]
+    assert {item["capability"] for item in mappings} == capability_ids
+    assert len(mappings) == len(capability_ids)
+
+    for item in mappings:
+        assert set(item["services"]) <= service_ids
+        assert set(item["evidence"]) <= evidence_ids
+        if item["example"] is not None:
+            assert item["example"] in evidence_ids
+
+
+def test_live_validated_network_capabilities_have_live_evidence() -> None:
+    reference = programmable_reference()
+    live_ids = {
+        item["id"]
+        for item in reference["evidence"]
+        if item["kind"] == "live-test" and item["status"] == "passing-in-ci"
+    }
+    network_service_ids = {
+        item["id"] for item in reference["services"] if item["status"] == "live-validated"
+    }
+
+    for item in reference["capability_evidence"]:
+        if set(item["services"]) & network_service_ids:
+            assert set(item["evidence"]) & live_ids, item["capability"]
+
+
+def test_evidence_targets_exist_in_repository() -> None:
+    for item in programmable_reference()["evidence"]:
+        path_text, separator, node = item["target"].partition("::")
+        path = Path(path_text)
+        assert path.exists(), item["target"]
+        if separator:
+            source = path.read_text(encoding="utf-8")
+            assert f"def {node}(" in source, item["target"]
+
+
+def test_reference_schema_version_is_v1_1() -> None:
+    assert REFERENCE_SCHEMA_VERSION == "1.1"
     schema = json.loads(Path("reference/schema.json").read_text(encoding="utf-8"))
     assert schema["properties"]["id"]["const"] == "gallica-sdk-reference"
+    assert "evidence" in schema["required"]
+    assert "capability_evidence" in schema["required"]
