@@ -1,33 +1,52 @@
 # Utilisation par des agents
 
-`gallica-sdk` n'embarque pas de modèle génératif et ne génère pas lui-même des scripts. Il expose une surface Python typée et un contrat machine-readable afin qu'un agent puisse comprendre les opérations supportées, leurs paramètres et leurs contraintes sans reconstruire les API Gallica à partir d'exemples fragiles.
+`gallica-sdk` n'embarque pas de modèle génératif et ne génère pas lui-même des scripts. Il expose une surface Python typée, une référence programmable et des preuves de validation afin qu'un agent puisse comprendre les opérations supportées, leurs paramètres, leurs contraintes et leur niveau d'observation sans reconstruire les API Gallica à partir d'exemples fragiles.
 
-## Point d'entrée machine-readable
+## Points d'entrée machine-readable
 
-```python
-from gallica import Gallica
+Pour découvrir le périmètre global sans installer le package, un agent peut lire :
 
-for capability in Gallica.capabilities():
-    print(capability["id"], capability["call"])
+```text
+reference/gallica-reference.json
 ```
 
-Le même contrat peut être exporté en JSON :
+Ce manifeste indexe les services, les capacités, les preuves et leur provenance. Il est validé contre la représentation Python canonique.
+
+Avec le package installé :
+
+```python
+from gallica import capabilities, evidence, evidence_freshness, programmable_reference
+
+reference = programmable_reference()
+contracts = capabilities()
+proofs = evidence()
+freshness = evidence_freshness()
+```
+
+Le contrat détaillé des capacités peut aussi être exporté en JSON :
 
 ```bash
 python scripts/export_capabilities.py > capabilities.json
 ```
 
-La source canonique est `src/gallica/agent.py`. Le script JSON n'entretient pas une seconde description indépendante.
+La référence de découverte peut être régénérée avec :
 
-Chaque capacité fournit :
+```bash
+python scripts/export_reference.py
+```
+
+Les sources canoniques sont dans `src/gallica/agent.py`, `src/gallica/reference.py` et `src/gallica/evidence.py`. Les fichiers JSON publiés ne constituent pas une seconde description indépendante.
+
+Chaque capacité fournit notamment :
 
 - un identifiant stable ;
 - l'appel Python correspondant ;
 - une description ;
 - le type retourné ;
-- le service réseau concerné ;
 - les paramètres ;
 - les contraintes importantes.
+
+Le graphe de référence relie ensuite chaque capacité réseau aux services Gallica et aux preuves live pertinentes. Une preuve live enregistre son test cible, sa date d'observation, le commit testé, le run CI et une fenêtre de fraîcheur.
 
 Les capacités incluent aussi les constructeurs locaux `Gallica.document`, `Gallica.periodical` et `Gallica.corpus`, afin qu'un consommateur n'ait pas à deviner comment obtenir les objets sur lesquels les autres méthodes s'appliquent.
 
@@ -73,9 +92,25 @@ for failure in report.failures:
 
 La librairie n'a pas généré ce programme. Elle a fourni un vocabulaire et des contrats suffisamment explicites pour qu'un agent puisse le générer sans inventer des endpoints ou contourner les quotas.
 
+## Interpréter les preuves
+
+`passing-in-ci` signifie qu'un test live a réussi lors de l'observation enregistrée. Ce statut n'est pas une garantie perpétuelle du service externe.
+
+Un agent peut utiliser :
+
+```python
+from gallica import evidence_freshness
+
+for item in evidence_freshness():
+    print(item["id"], item["state"], item["age_days"])
+```
+
+Une preuve `stale` reste une observation historique valide, mais elle doit normalement conduire l'agent à revalider le comportement avant de s'appuyer fortement sur un service externe susceptible d'avoir changé.
+
 ## Règles importantes pour les agents
 
 - utiliser les primitives du SDK lorsqu'elles existent plutôt que reconstruire les URLs Gallica ;
+- consulter la référence programmable pour distinguer supporté, non supporté et fraîcheur des preuves ;
 - utiliser `raw_xml` lorsqu'une information n'est pas encore modélisée ;
 - conserver `maximum_records <= 50` pour SRU ;
 - ne pas contourner le throttling `.texteBrut` ;
@@ -91,18 +126,21 @@ Le fichier racine `AGENTS.md` donne aux agents de développement les contraintes
 
 ## Pourquoi pas MCP maintenant ?
 
-Le contrat machine-readable résout déjà le problème principal pour Claude Code, Codex ou un agent disposant de Python et d'un terminal : comprendre précisément quelles opérations sont disponibles et écrire du code dessus.
+La référence programmable et le contrat machine-readable résolvent déjà le problème principal pour Claude Code, Codex ou un agent disposant de Python et d'un terminal : comprendre précisément quelles opérations sont disponibles et écrire du code dessus.
 
 Un serveur MCP ajouterait un protocole et un processus supplémentaires. Il ne sera pertinent que si un cas d'usage exige réellement des appels d'outils directs sans environnement Python. La couche actuelle est conçue pour pouvoir servir de base à un MCP futur sans en dépendre.
 
 ## Anti-dérive
 
-`tests/test_agent_contracts.py` vérifie notamment :
+Les tests vérifient notamment :
 
 - l'unicité des identifiants ;
-- la sérialisation JSON du contrat ;
+- la sérialisation JSON des contrats ;
 - l'existence de chaque classe et méthode déclarée ;
 - la présence de garde-fous essentiels ;
-- la validité des identifiants référencés par les recettes.
+- la validité des identifiants référencés par les recettes ;
+- la résolution des liens capacité → service → preuve ;
+- l'égalité entre le manifeste JSON publié et la représentation Python canonique ;
+- la cohérence des versions de package, README et schéma de référence.
 
 Ainsi, la documentation machine-readable ne doit pas pouvoir annoncer tranquillement une méthode supprimée depuis trois versions, ce qui est malheureusement une fonctionnalité assez répandue de la documentation humaine.
