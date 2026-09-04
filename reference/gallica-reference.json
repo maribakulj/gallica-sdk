@@ -1,92 +1,20 @@
 {
   "id": "gallica-sdk-reference",
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "purpose": "Verified operational knowledge for humans, notebooks, pipelines and agents using public Gallica services.",
   "implementation": "gallica-sdk",
   "authority": "This project is an independent reference layer; BnF public documentation and live services remain authoritative.",
   "capabilities_export": "python scripts/export_capabilities.py",
   "services": [
-    {
-      "id": "sru",
-      "name": "Gallica SRU 1.2",
-      "kind": "search",
-      "status": "live-validated",
-      "base_url": "https://gallica.bnf.fr/SRU",
-      "documentation": ["https://api.bnf.fr/"],
-      "notes": ["maximumRecords is capped at 50 by the SDK"]
-    },
-    {
-      "id": "oai-record",
-      "name": "Gallica OAIRecord",
-      "kind": "metadata",
-      "status": "live-validated",
-      "base_url": "https://gallica.bnf.fr/services/OAIRecord",
-      "documentation": ["https://api.bnf.fr/"],
-      "notes": ["Dublin Core values may repeat"]
-    },
-    {
-      "id": "pagination",
-      "name": "Gallica Pagination",
-      "kind": "structure",
-      "status": "live-validated",
-      "base_url": "https://gallica.bnf.fr/services/Pagination",
-      "documentation": ["https://api.bnf.fr/"],
-      "notes": ["nbVueImages is used as the image-view count"]
-    },
-    {
-      "id": "issues",
-      "name": "Gallica Issues",
-      "kind": "periodicals",
-      "status": "live-validated",
-      "base_url": "https://gallica.bnf.fr/services/Issues",
-      "documentation": ["https://api.bnf.fr/"],
-      "notes": ["dated issue resolution uses dayOfYear"]
-    },
-    {
-      "id": "content-search",
-      "name": "Gallica ContentSearch",
-      "kind": "ocr-search",
-      "status": "live-validated",
-      "base_url": "https://gallica.bnf.fr/services/ContentSearch",
-      "documentation": ["https://api.bnf.fr/"],
-      "notes": ["startResult is 1-based when supplied"]
-    },
-    {
-      "id": "text",
-      "name": "Gallica plain OCR text",
-      "kind": "ocr",
-      "status": "live-validated",
-      "base_url": "https://gallica.bnf.fr/ark:/12148/",
-      "documentation": ["https://api.bnf.fr/fr/node/232"],
-      "notes": ["public quota documented as 5 requests/minute"]
-    },
-    {
-      "id": "alto",
-      "name": "Gallica ALTO",
-      "kind": "ocr",
-      "status": "live-validated",
-      "base_url": "https://gallica.bnf.fr/RequestDigitalElement",
-      "documentation": ["https://api.bnf.fr/"],
-      "notes": ["views are 1-based"]
-    },
-    {
-      "id": "iiif-image",
-      "name": "Gallica IIIF Image",
-      "kind": "image",
-      "status": "live-validated",
-      "base_url": "https://gallica.bnf.fr/iiif/",
-      "documentation": ["https://api.bnf.fr/", "https://api.bnf.fr/fr/node/232"],
-      "notes": ["1000px is the conservative SDK default", "width above 1000px is handled as high definition"]
-    },
-    {
-      "id": "pdf",
-      "name": "Gallica PDF representation",
-      "kind": "document",
-      "status": "not-supported",
-      "base_url": "https://gallica.bnf.fr/ark:/12148/",
-      "documentation": ["https://api.bnf.fr/fr/node/232"],
-      "notes": ["historical automated URL forms returned HTML in public CI validation", "the SDK intentionally exposes no pdf() method"]
-    }
+    {"id": "sru", "name": "Gallica SRU 1.2", "kind": "search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/SRU", "documentation": ["https://api.bnf.fr/"], "notes": ["maximumRecords is capped at 50 by the SDK"]},
+    {"id": "oai-record", "name": "Gallica OAIRecord", "kind": "metadata", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/OAIRecord", "documentation": ["https://api.bnf.fr/"], "notes": ["Dublin Core values may repeat"]},
+    {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ["https://api.bnf.fr/"], "notes": ["nbVueImages is used as the image-view count"]},
+    {"id": "issues", "name": "Gallica Issues", "kind": "periodicals", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Issues", "documentation": ["https://api.bnf.fr/"], "notes": ["dated issue resolution uses dayOfYear"]},
+    {"id": "content-search", "name": "Gallica ContentSearch", "kind": "ocr-search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/ContentSearch", "documentation": ["https://api.bnf.fr/"], "notes": ["startResult is 1-based when supplied"]},
+    {"id": "text", "name": "Gallica plain OCR text", "kind": "ocr", "status": "live-validated", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ["https://api.bnf.fr/fr/node/232"], "notes": ["public quota documented as 5 requests/minute"]},
+    {"id": "alto", "name": "Gallica ALTO", "kind": "ocr", "status": "live-validated", "base_url": "https://gallica.bnf.fr/RequestDigitalElement", "documentation": ["https://api.bnf.fr/"], "notes": ["views are 1-based"]},
+    {"id": "iiif-image", "name": "Gallica IIIF Image", "kind": "image", "status": "live-validated", "base_url": "https://gallica.bnf.fr/iiif/", "documentation": ["https://api.bnf.fr/", "https://api.bnf.fr/fr/node/232"], "notes": ["1000px is the conservative SDK default", "width above 1000px is handled as high definition"]},
+    {"id": "pdf", "name": "Gallica PDF representation", "kind": "document", "status": "not-supported", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ["https://api.bnf.fr/fr/node/232"], "notes": ["historical automated URL forms returned HTML in public CI validation", "the SDK intentionally exposes no pdf() method"]}
   ],
   "capability_index": [
     {"id": "document", "call": "Gallica.document"},
@@ -105,8 +33,35 @@
     {"id": "periodical_issue", "call": "Periodical.issue"},
     {"id": "corpus_fetch", "call": "Corpus.fetch"}
   ],
+  "evidence": [
+    {"id": "live.vertical_slice", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_vertical_slice", "description": "Public smoke validation for SRU, Pagination, OAIRecord, ALTO and IIIF image access."},
+    {"id": "live.document_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public smoke validation for document/page text, ContentSearch and dated Issues resolution."},
+    {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata/text artifacts, resume and manifest stability."},
+    {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior."},
+    {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus."},
+    {"id": "example.search_to_corpus", "kind": "example", "status": "checked-in", "target": "examples/search_to_corpus.py", "description": "Minimal search-to-corpus workflow intended for humans and coding agents."}
+  ],
+  "capability_evidence": [
+    {"capability": "document", "services": [], "evidence": [], "example": null},
+    {"capability": "periodical", "services": [], "evidence": [], "example": null},
+    {"capability": "corpus", "services": [], "evidence": ["live.search_pagination"], "example": "example.search_to_corpus"},
+    {"capability": "search", "services": ["sru"], "evidence": ["live.vertical_slice"], "example": "example.search_to_corpus"},
+    {"capability": "search_all", "services": ["sru"], "evidence": ["live.search_pagination"], "example": "example.search_to_corpus"},
+    {"capability": "document_metadata", "services": ["oai-record"], "evidence": ["live.vertical_slice", "live.corpus_document"], "example": null},
+    {"capability": "document_page_count", "services": ["pagination"], "evidence": ["live.vertical_slice"], "example": null},
+    {"capability": "document_text", "services": ["text"], "evidence": ["live.document_access", "live.corpus_document"], "example": null},
+    {"capability": "content_search", "services": ["content-search"], "evidence": ["live.document_access"], "example": null},
+    {"capability": "page_text", "services": ["text"], "evidence": ["live.document_access"], "example": null},
+    {"capability": "page_alto", "services": ["alto"], "evidence": ["live.vertical_slice", "live.corpus_pages"], "example": null},
+    {"capability": "page_iiif_info", "services": ["iiif-image"], "evidence": ["live.vertical_slice"], "example": null},
+    {"capability": "page_image", "services": ["iiif-image"], "evidence": ["live.vertical_slice", "live.corpus_pages"], "example": null},
+    {"capability": "periodical_issue", "services": ["issues"], "evidence": ["live.document_access"], "example": null},
+    {"capability": "corpus_fetch", "services": ["oai-record", "text", "alto", "iiif-image"], "evidence": ["live.corpus_document", "live.corpus_pages"], "example": "example.search_to_corpus"}
+  ],
   "invariants": [
     "A network capability is not marked supported without a relevant public live test.",
+    "Every service/evidence reference in capability_evidence must resolve in this manifest.",
+    "Every public capability must have exactly one capability_evidence record.",
     "Raw XML remains available when the SDK exposes a structured XML-derived model.",
     "Corpus page downloads never imply all pages; views must be explicit.",
     "Rate-limit behavior is centralized in the shared transport.",
