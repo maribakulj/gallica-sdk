@@ -64,8 +64,12 @@ def test_live_validated_network_capabilities_have_live_evidence() -> None:
 
 def test_evidence_targets_exist_in_repository() -> None:
     for item in programmable_reference()["evidence"]:
-        path = item["target"].split("::", 1)[0]
-        assert Path(path).exists(), item["target"]
+        path_text, separator, node = item["target"].partition("::")
+        path = Path(path_text)
+        assert path.exists(), item["target"]
+        if separator:
+            source = path.read_text(encoding="utf-8")
+            assert f"def {node}(" in source, item["target"]
 
 
 def test_reference_schema_version_is_v1_1() -> None:
