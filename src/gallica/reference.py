@@ -5,7 +5,7 @@ from typing import TypedDict
 from .agent import capabilities
 from .evidence import CapabilityEvidence, EvidenceSpec, capability_evidence, evidence
 
-REFERENCE_SCHEMA_VERSION = "1.2"
+REFERENCE_SCHEMA_VERSION = "2.0"
 REFERENCE_ID = "gallica-sdk-reference"
 
 
@@ -31,6 +31,7 @@ class ReferenceSpec(TypedDict):
     implementation: str
     authority: str
     capabilities_export: str
+    operational_contracts_export: str
     services: tuple[ServiceSpec, ...]
     capability_index: tuple[CapabilityIndexSpec, ...]
     evidence: tuple[EvidenceSpec, ...]
@@ -60,6 +61,7 @@ def programmable_reference() -> ReferenceSpec:
         "implementation": "gallica-sdk",
         "authority": "This project is an independent reference layer; BnF public documentation and live services remain authoritative.",
         "capabilities_export": "python scripts/export_capabilities.py",
+        "operational_contracts_export": "python scripts/export_operational_contracts.py",
         "services": SERVICES,
         "capability_index": tuple({"id": spec["id"], "call": spec["call"]} for spec in capabilities()),
         "evidence": evidence(),
@@ -70,6 +72,7 @@ def programmable_reference() -> ReferenceSpec:
             "Evidence freshness is evaluated separately from support status and can become stale without changing the historical observation.",
             "Every service/evidence reference in capability_evidence must resolve in this manifest.",
             "Every public capability must have exactly one capability_evidence record.",
+            "Operational contracts resolve canonical capabilities, services and evidence rather than duplicating them as independent truth.",
             "Raw XML remains available when the SDK exposes a structured XML-derived model.",
             "Corpus page downloads never imply all pages; views must be explicit.",
             "Rate-limit behavior is centralized in the shared transport.",
