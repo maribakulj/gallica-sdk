@@ -3,8 +3,14 @@ from __future__ import annotations
 from typing import TypedDict
 
 from .agent import CapabilitySpec, capabilities
-from .evidence import EvidenceFreshness, EvidenceSpec, capability_evidence, evidence, evidence_freshness
-from .reference import ServiceSpec, SERVICES
+from .evidence import (
+    EvidenceFreshness,
+    EvidenceSpec,
+    capability_evidence,
+    evidence,
+    evidence_freshness,
+)
+from .reference import SERVICES, ServiceSpec
 
 
 class OperationalSemantics(TypedDict):
