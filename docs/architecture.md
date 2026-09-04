@@ -2,9 +2,14 @@
 
 ## Mission
 
-`gallica-sdk` est une bibliothèque Python légère donnant un accès cohérent, typé et testable aux API publiques Gallica.
+`gallica-sdk` est une couche de référence programmable et vérifiée pour les services publics Gallica.
 
-Elle ne crée pas une nouvelle API réseau. Elle appelle directement les services publics Gallica et normalise leurs contrats pour les développeurs, notebooks et outils automatisés.
+Le projet fournit deux artefacts liés :
+
+1. un SDK Python léger pour notebooks, scripts et pipelines ;
+2. une représentation machine-readable des capacités, services, contraintes et preuves opérationnelles afin qu'un agent puisse raisonner sur une base validée sans reconstruire l'API à chaque session.
+
+Le projet ne crée pas une nouvelle API réseau. Le SDK appelle directement les services publics Gallica ; la référence programmable décrit ce que le projet a implémenté, observé et validé. La documentation et les services publics BnF restent l'autorité externe.
 
 ## Principes
 
@@ -14,57 +19,86 @@ Elle ne crée pas une nouvelle API réseau. Elle appelle directement les service
 4. Pas d'effet de bord implicite : les méthodes retournent des valeurs ; l'écriture disque est explicite.
 5. Objets Python simples, signatures typées et erreurs explicites.
 6. Les primitives bas niveau restent accessibles lorsque l'abstraction de haut niveau ne suffit pas.
-7. Les contraintes réseau et quotas doivent être centralisés plutôt que réimplémentés par chaque méthode.
-8. Une opération réseau n'est dite supportée que lorsqu'elle dispose de tests unitaires, d'intégration simulée et d'un smoke test live approprié.
+7. Les contraintes réseau et quotas sont centralisés dans le transport partagé.
+8. Une opération réseau n'est dite supportée que lorsqu'elle dispose d'un test live public approprié.
 9. La documentation doit être exploitable à la fois par un humain et par un agent qui génère du code.
-10. L'API publique doit rester petite et régulière.
+10. La référence programmable, les signatures Python, les recettes agent et les preuves ne doivent pas dériver silencieusement les unes des autres.
+11. Une preuve live est une observation datée, pas une garantie éternelle d'un service externe.
+12. L'API publique doit rester petite et régulière.
 
-## Architecture cible initiale
+## Architecture actuelle
 
 ```text
-Utilisateur Python / notebook / agent
-                |
-             Gallica
-        ________|________
-       |        |        |
-     Search  Document  (Corpus plus tard)
-               |
-              Page
-               |
-      text / alto / image
-               |
-           transport HTTP
-               |
-        API publiques Gallica
+                      utilisateurs
+            humain / notebook / pipeline / agent
+                         |
+              +----------+----------+
+              |                     |
+      référence programmable      SDK Python
+        JSON / contrats          Gallica()
+              |                     |
+      services / preuves       +-----+---------+
+              |                |     |         |
+              |              Search Document  Corpus
+              |                      |          |
+              |                     Page    fichiers + manifest
+              |                      |
+              |              text / ALTO / image
+              |                      |
+              +----------+-----------+
+                         |
+                  transport HTTP
+                         |
+                services publics BnF
 ```
 
-Les classes `Document` et `Page` sont des façades minces autour d'un ARK et d'un numéro de vue. Elles ne doivent pas devenir des conteneurs d'état complexes.
+`Document`, `Page` et `Periodical` restent des façades minces. `Corpus` ajoute uniquement les comportements nécessaires aux traitements longs : reprise, écritures atomiques, manifest et isolation des erreurs par ARK.
 
-## Non-objectifs de la 0.1
+La référence programmable est générée depuis la même source canonique que les contrats Python et relie les capacités aux services Gallica et aux preuves de validation.
+
+## Surface fonctionnelle actuelle
+
+Le SDK couvre notamment :
+
+- recherche SRU et pagination paresseuse ;
+- métadonnées OAIRecord ;
+- pagination documentaire ;
+- texte OCR et ContentSearch ;
+- ALTO ;
+- IIIF Image ;
+- résolution datée de numéros de périodiques via Issues ;
+- corpus reprenable pour métadonnées, texte, ALTO et images sur vues explicites.
+
+La référence programmable expose en plus :
+
+- index des capacités ;
+- catalogue des services ;
+- contraintes opérationnelles ;
+- preuves live ;
+- provenance des observations ;
+- fraîcheur des preuves.
+
+## Non-objectifs actuels
 
 - serveur web ;
 - MCP ;
 - interface graphique ;
-- CLI complète ;
 - framework de plugins ;
 - compatibilité exhaustive avec les wrappers historiques ;
 - cache distribué ;
-- API async parallèle à l'API synchrone ;
-- framework d'agents.
+- framework d'agents ;
+- téléchargement implicite de toutes les vues ;
+- multiplication d'adaptateurs qui dupliquent la logique métier.
 
-Ces éléments pourront être ajoutés uniquement lorsqu'un cas d'usage réel le justifie.
+Une CLI, une API async ou un MCP ne seront ajoutés que si un cas d'usage concret démontre qu'ils apportent une valeur supérieure à l'interface Python existante.
 
-## Premier vertical slice
+## Validation
 
-La première tranche fonctionnelle doit valider le modèle conceptuel avec :
+La CI distingue :
 
-- `Gallica.search()` ;
-- `Gallica.document()` ;
-- `Document.metadata()` ;
-- `Document.page_count()` ;
-- `Document.page()` ;
-- `Page.alto()` ;
-- `Page.iiif_info()` ;
-- `Page.image()`.
+- tests locaux sans réseau ;
+- typage strict et lint ;
+- construction et réinstallation du wheel ;
+- smoke tests live contre Gallica public.
 
-Le reste est différé jusqu'à validation de cette interface contre Gallica réel.
+Le manifeste `reference/gallica-reference.json` doit correspondre exactement à sa représentation Python canonique. Les liens capacité → service → preuve doivent résoudre, et les preuves live enregistrent leur observation, commit et run CI.

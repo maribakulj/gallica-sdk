@@ -11,9 +11,11 @@ Le projet ne crée pas une nouvelle API réseau et ne remplace pas la documentat
 
 ## Statut
 
-**0.2.0.dev0 — corpus reprenable, recherche paginée, packaging vérifié et référence programmable.**
+**0.2.0.dev0 — corpus reprenable, recherche paginée, packaging vérifié, référence programmable et provenance des preuves.**
 
 Le SDK couvre recherche SRU, métadonnées OAIRecord, pagination, OCR ALTO et texte brut, IIIF, recherche dans OCR, résolution de numéros de périodiques et traitement de corpus reprenable. SRU, OAIRecord et ContentSearch sont transformés en objets Python typés tout en conservant le XML original dans `raw_xml`.
+
+Aucune release stable n'est encore publiée. Le dépôt est en phase de préparation d'une première release publique.
 
 ## Référence programmable
 
@@ -32,9 +34,11 @@ reference/
 - leurs URLs de base et sources documentaires ;
 - les contraintes opérationnelles importantes ;
 - un index de toutes les capacités publiques du SDK ;
+- les preuves qui valident les capacités réseau ;
+- la provenance et la fraîcheur des observations live ;
 - les invariants de validation du projet.
 
-Le manifeste est versionné (`schema_version: 1.0`) et vérifié par CI contre la représentation Python canonique. Il peut être régénéré avec :
+Le manifeste est versionné (`schema_version: 1.2`) et vérifié par CI contre la représentation Python canonique. Il peut être régénéré avec :
 
 ```bash
 python scripts/export_reference.py
@@ -208,6 +212,15 @@ for capability in Gallica.capabilities():
 
 `agent/recipes.json` fournit des compositions courantes qui référencent les mêmes identifiants de capacités, et les tests empêchent recettes, contrats et référence publiée de dériver silencieusement de l'API Python réelle.
 
+Les preuves peuvent également être inspectées directement :
+
+```python
+from gallica import evidence, evidence_freshness
+
+print(evidence())
+print(evidence_freshness())
+```
+
 Pour les agents de développement, le dépôt fournit [`AGENTS.md`](AGENTS.md). La référence détaillée est dans [`docs/agents.md`](docs/agents.md).
 
 Cette couche n'est pas un MCP. Un MCP éventuel pourra être ajouté plus tard uniquement si un cas d'usage justifie réellement ce protocole supplémentaire.
@@ -215,8 +228,12 @@ Cette couche n'est pas un MCP. Un MCP éventuel pourra être ajouté plus tard u
 ## Surface publique actuelle
 
 ```text
+__version__ -> str
 programmable_reference() -> ReferenceSpec
 capabilities() -> tuple[CapabilitySpec, ...]
+evidence() -> tuple[EvidenceSpec, ...]
+capability_evidence() -> tuple[CapabilityEvidence, ...]
+evidence_freshness() -> tuple[EvidenceFreshness, ...]
 Gallica.capabilities() -> tuple[CapabilitySpec, ...]
 Gallica.search() -> SearchResults
 Gallica.search_all() -> Iterator[DublinCoreRecord]
@@ -257,10 +274,12 @@ La CI exécute Ruff, mypy strict et les tests sous Python 3.11 et 3.12, puis un 
 
 - [`reference/gallica-reference.json`](reference/gallica-reference.json) : manifeste de découverte machine-readable ;
 - [`reference/schema.json`](reference/schema.json) : schéma JSON de la référence ;
-- [`docs/architecture.md`](docs/architecture.md) : mission, principes et non-objectifs ;
+- [`docs/architecture.md`](docs/architecture.md) : mission, principes, architecture actuelle et non-objectifs ;
 - [`docs/capabilities.md`](docs/capabilities.md) : matrice des services et statut d'intégration ;
 - [`docs/corpus.md`](docs/corpus.md) : contrat détaillé de corpus, reprise, manifest et erreurs ;
 - [`docs/agents.md`](docs/agents.md) : découverte machine-readable, recettes et règles pour agents ;
+- [`docs/evidence.md`](docs/evidence.md) : preuves, provenance et fraîcheur des observations ;
+- [`docs/release-readiness.md`](docs/release-readiness.md) : état de préparation de la première release ;
 - [`AGENTS.md`](AGENTS.md) : instructions de développement pour agents travaillant sur le dépôt.
 
 Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage sur les wrappers historiques et leurs défauts. `gallica-sdk` n'en dépend pas et ne reprend pas son architecture legacy.

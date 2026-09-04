@@ -6,6 +6,8 @@ from typing import Any
 
 import httpx
 
+from ._version import __version__
+
 _RETRYABLE = {429, 500, 502, 503, 504}
 
 
@@ -26,7 +28,10 @@ class Transport:
             timeout=timeout,
             follow_redirects=True,
             headers={
-                "User-Agent": "gallica-sdk/0.2.0.dev0 (+https://github.com/maribakulj/gallica-sdk)",
+                "User-Agent": (
+                    f"gallica-sdk/{__version__} "
+                    "(+https://github.com/maribakulj/gallica-sdk)"
+                ),
                 "Accept": "*/*",
             },
         )
