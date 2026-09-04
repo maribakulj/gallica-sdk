@@ -3,19 +3,7 @@
   "$id": "https://github.com/maribakulj/gallica-sdk/reference/schema.json",
   "title": "Gallica programmable reference",
   "type": "object",
-  "required": [
-    "id",
-    "schema_version",
-    "purpose",
-    "implementation",
-    "authority",
-    "capabilities_export",
-    "services",
-    "capability_index",
-    "evidence",
-    "capability_evidence",
-    "invariants"
-  ],
+  "required": ["id", "schema_version", "purpose", "implementation", "authority", "capabilities_export", "services", "capability_index", "evidence", "capability_evidence", "invariants"],
   "properties": {
     "id": {"const": "gallica-sdk-reference"},
     "schema_version": {"type": "string"},
@@ -23,35 +11,8 @@
     "implementation": {"type": "string"},
     "authority": {"type": "string"},
     "capabilities_export": {"type": "string"},
-    "services": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "name", "kind", "status", "base_url", "documentation", "notes"],
-        "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "kind": {"type": "string"},
-          "status": {"enum": ["live-validated", "not-supported"]},
-          "base_url": {"type": "string"},
-          "documentation": {"type": "array", "items": {"type": "string"}},
-          "notes": {"type": "array", "items": {"type": "string"}}
-        },
-        "additionalProperties": false
-      }
-    },
-    "capability_index": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "call"],
-        "properties": {
-          "id": {"type": "string"},
-          "call": {"type": "string"}
-        },
-        "additionalProperties": false
-      }
-    },
+    "services": {"type": "array", "items": {"type": "object", "required": ["id", "name", "kind", "status", "base_url", "documentation", "notes"], "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "kind": {"type": "string"}, "status": {"enum": ["live-validated", "not-supported"]}, "base_url": {"type": "string"}, "documentation": {"type": "array", "items": {"type": "string"}}, "notes": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}},
+    "capability_index": {"type": "array", "items": {"type": "object", "required": ["id", "call"], "properties": {"id": {"type": "string"}, "call": {"type": "string"}}, "additionalProperties": false}},
     "evidence": {
       "type": "array",
       "items": {
@@ -62,25 +23,17 @@
           "kind": {"enum": ["live-test", "example"]},
           "status": {"enum": ["passing-in-ci", "checked-in"]},
           "target": {"type": "string"},
-          "description": {"type": "string"}
+          "description": {"type": "string"},
+          "observed_at": {"type": "string", "format": "date-time"},
+          "observed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+          "observed_run": {"type": "string"},
+          "freshness_days": {"type": "integer", "minimum": 1},
+          "confidence": {"enum": ["high", "medium", "low", "reference"]}
         },
         "additionalProperties": false
       }
     },
-    "capability_evidence": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["capability", "services", "evidence", "example"],
-        "properties": {
-          "capability": {"type": "string"},
-          "services": {"type": "array", "items": {"type": "string"}},
-          "evidence": {"type": "array", "items": {"type": "string"}},
-          "example": {"type": ["string", "null"]}
-        },
-        "additionalProperties": false
-      }
-    },
+    "capability_evidence": {"type": "array", "items": {"type": "object", "required": ["capability", "services", "evidence", "example"], "properties": {"capability": {"type": "string"}, "services": {"type": "array", "items": {"type": "string"}}, "evidence": {"type": "array", "items": {"type": "string"}}, "example": {"type": ["string", "null"]}}, "additionalProperties": false}},
     "invariants": {"type": "array", "items": {"type": "string"}}
   },
   "additionalProperties": false
