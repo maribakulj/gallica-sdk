@@ -1,6 +1,6 @@
 {
   "id": "gallica-sdk-reference",
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "purpose": "Verified operational knowledge for humans, notebooks, pipelines and agents using public Gallica services.",
   "implementation": "gallica-sdk",
   "authority": "This project is an independent reference layer; BnF public documentation and live services remain authoritative.",
@@ -34,12 +34,12 @@
     {"id": "corpus_fetch", "call": "Corpus.fetch"}
   ],
   "evidence": [
-    {"id": "live.vertical_slice", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_vertical_slice", "description": "Public smoke validation for SRU, Pagination, OAIRecord, ALTO and IIIF image access."},
-    {"id": "live.document_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public smoke validation for document/page text, ContentSearch and dated Issues resolution."},
-    {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata/text artifacts, resume and manifest stability."},
-    {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior."},
-    {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus."},
-    {"id": "example.search_to_corpus", "kind": "example", "status": "checked-in", "target": "examples/search_to_corpus.py", "description": "Minimal search-to-corpus workflow intended for humans and coding agents."}
+    {"id": "live.vertical_slice", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_vertical_slice", "description": "Public smoke validation for SRU, Pagination, OAIRecord, ALTO and IIIF image access.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.document_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public smoke validation for document/page text, ContentSearch and dated Issues resolution.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata/text artifacts, resume and manifest stability.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
+    {"id": "example.search_to_corpus", "kind": "example", "status": "checked-in", "target": "examples/search_to_corpus.py", "description": "Minimal search-to-corpus workflow intended for humans and coding agents.", "confidence": "reference"}
   ],
   "capability_evidence": [
     {"capability": "document", "services": [], "evidence": [], "example": null},
@@ -60,6 +60,8 @@
   ],
   "invariants": [
     "A network capability is not marked supported without a relevant public live test.",
+    "Every live-test evidence record carries an observation timestamp, tested commit and CI run.",
+    "Evidence freshness is evaluated separately from support status and can become stale without changing the historical observation.",
     "Every service/evidence reference in capability_evidence must resolve in this manifest.",
     "Every public capability must have exactly one capability_evidence record.",
     "Raw XML remains available when the SDK exposes a structured XML-derived model.",
