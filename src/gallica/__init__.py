@@ -1,3 +1,4 @@
+from ._version import __version__
 from .agent import CapabilitySpec, capabilities
 from .client import Gallica
 from .corpus import Corpus, CorpusItemResult, CorpusReport
@@ -38,6 +39,7 @@ __all__ = [
     "Periodical",
     "ReferenceSpec",
     "SearchResults",
+    "__version__",
     "capabilities",
     "capability_evidence",
     "evidence",
