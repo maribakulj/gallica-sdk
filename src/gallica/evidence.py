@@ -17,6 +17,14 @@ class EvidenceSpec(TypedDict, total=False):
     confidence: str
 
 
+class LiveObservation(TypedDict):
+    observed_at: str
+    observed_commit: str
+    observed_run: str
+    freshness_days: int
+    confidence: str
+
+
 class CapabilityEvidence(TypedDict):
     capability: str
     services: tuple[str, ...]
@@ -32,7 +40,7 @@ class EvidenceFreshness(TypedDict):
     confidence: str | None
 
 
-_LAST_LIVE_OBSERVATION = {
+_LAST_LIVE_OBSERVATION: LiveObservation = {
     "observed_at": "2026-09-04T16:42:34Z",
     "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985",
     "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794",
