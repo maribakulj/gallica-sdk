@@ -16,15 +16,16 @@
 - [x] programmable reference and JSON Schema;
 - [x] validation evidence graph with dated CI provenance;
 - [x] project changelog;
-- [x] package metadata URLs and classifiers.
+- [x] package metadata URLs and classifiers;
+- [x] user-facing guides for search, documents, periodicals, corpus, quotas and errors;
+- [x] executable reference notebooks validated in CI.
 
 ## Blocking the first public release
 
 - [ ] choose and add an explicit open-source license;
 - [ ] choose the first public version/tag policy and remove the `.dev0` suffix for the release commit;
 - [ ] create a release workflow with protected publishing credentials or trusted publishing;
-- [ ] validate the final artifact on TestPyPI or an equivalent isolated installation path;
-- [ ] finish the user-facing documentation/notebook pass planned after Phase 10.
+- [ ] validate the final artifact on TestPyPI or an equivalent isolated installation path.
 
 ## Important non-blockers
 

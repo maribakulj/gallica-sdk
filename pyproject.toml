@@ -32,6 +32,11 @@ dev = [
   "ruff>=0.6,<1",
   "mypy>=1.11,<2",
 ]
+docs = [
+  "ipykernel>=6,<8",
+  "nbclient>=0.10,<1",
+  "nbformat>=5.10,<6",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gallica"]
