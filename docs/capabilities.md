@@ -1,6 +1,6 @@
 # Matrice de capacités
 
-Cette matrice décrit le périmètre public visé par le SDK et distingue les capacités connues des capacités effectivement livrées.
+Cette matrice décrit le périmètre public actuel du SDK et distingue les capacités connues des capacités effectivement supportées.
 
 | Capacité | Service Gallica | Entrée principale | Sortie SDK | Contrainte connue | Statut |
 |---|---|---|---|---|---|
@@ -14,8 +14,8 @@ Cette matrice décrit le périmètre public visé par le SDK et distingue les ca
 | Informations IIIF | IIIF `info.json` | ARK + vue | `dict` JSON | endpoint Image distinct de Presentation | supportée |
 | Image IIIF | IIIF Image | ARK + vue | `bytes` image | `/full/full/` ou largeur >1000 px : classe HD ; quota public documenté | supportée, largeur prudente par défaut |
 | PDF automatisé | représentation `.pdf` / qualifiers historiques | ARK / vue / plage | non exposé | quota public documenté : 4/min ; comportement automatisé à caractériser | non supportée pour l'instant |
-| Corpus métadonnées/texte | composition SDK | liste d'ARK | `CorpusReport` + manifest + fichiers | réutilise les quotas du transport ; synchrone | supportée en 0.2 dev |
-| Corpus ALTO/images | composition SDK | liste d'ARK + vues explicites | `CorpusReport` + fichiers par vue | aucune sélection implicite de toutes les vues | supportée en 0.2 dev |
+| Corpus métadonnées/texte | composition SDK | liste d'ARK | `CorpusReport` + manifest + fichiers | réutilise les quotas du transport ; synchrone | supportée |
+| Corpus ALTO/images | composition SDK | liste d'ARK + vues explicites | `CorpusReport` + fichiers par vue | aucune sélection implicite de toutes les vues | supportée |
 
 ## Règle de statut
 
@@ -28,7 +28,9 @@ Une ligne ne doit pas être annoncée comme « supportée » uniquement parce qu
 
 Pour une capacité de composition comme `Corpus`, il faut en plus des tests déterministes de reprise, d'écriture partielle et d'isolation des erreurs.
 
-## Contrats structurés Phase 2
+La référence programmable relie chaque capacité réseau supportée à son service et à au moins une preuve live. Les preuves enregistrent leur date d'observation, le commit testé, le run CI et une fenêtre de fraîcheur.
+
+## Contrats structurés
 
 Le SDK transforme seulement les structures suffisamment stables pour apporter une vraie valeur :
 
@@ -39,7 +41,7 @@ Le SDK transforme seulement les structures suffisamment stables pour apporter un
 
 Chaque modèle structuré conserve `raw_xml`.
 
-## Corpus 0.2
+## Corpus reprenable
 
 `Gallica.corpus(arks)` normalise et déduplique les ARK en conservant l'ordre. `Corpus.fetch()` peut produire `metadata.json`, `text.txt`, `pages/<vue>/alto.xml` et `pages/<vue>/image.jpg` ainsi qu'un `manifest.jsonl` append-only pour les tentatives réellement exécutées.
 
@@ -60,6 +62,13 @@ Le corpus reste synchrone et passe exclusivement par les primitives du SDK. Il n
 
 Le PDF n'est volontairement pas exposé. Deux formes issues des usages historiques ont été testées depuis GitHub Actions le 2 septembre 2026 : `f1n1.pdf` et `f1.pdf`. Dans les deux cas, Gallica a répondu HTTP 200 avec `text/html;charset=UTF-8` plutôt qu'un flux commençant par `%PDF`. Le quota PDF public reste connu, mais ne suffit pas à établir un contrat d'accès automatisé reproductible.
 
-## Sources de travail
+## Source de vérité opérationnelle
+
+La matrice humaine sert à comprendre rapidement le périmètre. Pour les consommateurs automatisés, les sources de vérité du projet sont :
+
+- `capabilities()` pour les signatures et contraintes détaillées ;
+- `programmable_reference()` / `reference/gallica-reference.json` pour les services et l'index des capacités ;
+- `evidence()` et `capability_evidence()` pour le graphe de validation ;
+- `evidence_freshness()` pour interpréter l'âge des observations live.
 
 Les contrats initiaux proviennent de la documentation publique api.bnf.fr et des validations réalisées dans `maribakulj/maj-scripts-api.bnf.fr`. Ce dépôt reste indépendant de son code : les connaissances sont reprises, pas son architecture ni ses adaptateurs legacy.
