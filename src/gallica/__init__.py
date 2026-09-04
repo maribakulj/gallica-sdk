@@ -18,6 +18,7 @@ from .models import (
     DublinCoreRecord,
     SearchResults,
 )
+from .operational import OperationalContract, operational_contract, operational_contracts
 from .periodical import Periodical
 from .reference import ReferenceSpec, programmable_reference
 
@@ -35,6 +36,7 @@ __all__ = [
     "EvidenceFreshness",
     "EvidenceSpec",
     "Gallica",
+    "OperationalContract",
     "Page",
     "Periodical",
     "ReferenceSpec",
@@ -44,5 +46,7 @@ __all__ = [
     "capability_evidence",
     "evidence",
     "evidence_freshness",
+    "operational_contract",
+    "operational_contracts",
     "programmable_reference",
 ]
