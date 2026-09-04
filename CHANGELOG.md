@@ -17,12 +17,16 @@ The project follows semantic versioning once a first public release is published
 - programmable Gallica service reference with JSON Schema;
 - capability → service → evidence graph;
 - live-validation provenance, observation timestamps and evidence freshness classification;
+- user guides for search, documents/pages, periodicals, corpus, quotas and error behavior;
+- executable notebooks for search/metadata and resumable corpus workflows;
+- CI execution of the reference notebooks against public Gallica services;
 - CI for Python 3.11 and 3.12, Ruff, mypy strict, wheel/sdist packaging and public Gallica smoke tests.
 
 ### Changed
 
 - project positioning expanded from a Python-only SDK to a verified programmable reference plus Python SDK;
-- package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`.
+- package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;
+- README is now a navigable entry point to task-focused documentation rather than the only user guide.
 
 ### Known limitations
 
