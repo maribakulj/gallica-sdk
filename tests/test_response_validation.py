@@ -23,13 +23,14 @@ def _response(
     content: bytes,
     *,
     content_type: str | None = None,
+    url: str = "https://gallica.bnf.fr/test",
 ) -> httpx.Response:
     headers = {"Content-Type": content_type} if content_type is not None else None
     return httpx.Response(
         200,
         content=content,
         headers=headers,
-        request=httpx.Request("GET", "https://gallica.bnf.fr/test"),
+        request=httpx.Request("GET", url),
     )
 
 
@@ -65,13 +66,31 @@ def test_image_accepts_jpeg_signature_without_content_type() -> None:
     assert gallica.document("bpt6k1").page(1).image() == payload
 
 
-def test_text_rejects_html_success_payload() -> None:
+def test_text_accepts_legitimate_html_representation() -> None:
+    payload = b"<html><body><p>Rappel de votre demande</p><p>OCR text</p></body></html>"
     gallica = Gallica(
         transport=StaticTransport(  # type: ignore[arg-type]
-            _response(b"<html>not OCR</html>", content_type="text/html; charset=utf-8")
+            _response(
+                payload,
+                content_type="text/html; charset=utf-8",
+                url="https://gallica.bnf.fr/ark:/12148/bpt6k1.texteBrut",
+            )
         )
     )
-    with pytest.raises(GallicaResponseError, match="plain OCR text returned HTML"):
+    assert "OCR text" in gallica.document("bpt6k1").text()
+
+
+def test_text_rejects_altcha_challenge() -> None:
+    gallica = Gallica(
+        transport=StaticTransport(  # type: ignore[arg-type]
+            _response(
+                b"<html><body><altcha-widget></altcha-widget></body></html>",
+                content_type="text/html",
+                url="https://gallica.bnf.fr/services/engine/search/altcha",
+            )
+        )
+    )
+    with pytest.raises(GallicaResponseError, match="anti-bot challenge"):
         gallica.document("bpt6k1").text()
 
 
