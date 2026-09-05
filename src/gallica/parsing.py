@@ -132,6 +132,13 @@ def _content_search_matches(item: ET.Element) -> tuple[ContentSearchMatch, ...]:
     return tuple(matches)
 
 
+def _legacy_alto_id(element: ET.Element | None) -> str | None:
+    if element is None or element.text is None:
+        return None
+    value = element.text.strip()
+    return value or None
+
+
 def parse_content_search(xml: str, *, fallback_query: str) -> ContentSearchResults:
     root = _parse_xml(xml, expected_root="results")
     total_raw = root.attrib.get("countResults", "0")
@@ -160,11 +167,20 @@ def parse_content_search(xml: str, *, fallback_query: str) -> ContentSearchResul
                 raise GallicaResponseError("ContentSearch score is not numeric") from exc
         page_id_element = direct_children.get("p_id")
         content_element = direct_children.get("content")
+        legacy_alto_id = _legacy_alto_id(direct_children.get("altoid"))
         items.append(
             ContentSearchItem(
-                page_id=(page_id_element.text.strip() if page_id_element is not None and page_id_element.text else None),
-                content_html=(content_element.text if content_element is not None and content_element.text else None),
-                alto_id=matches[0].alto_id if matches else None,
+                page_id=(
+                    page_id_element.text.strip()
+                    if page_id_element is not None and page_id_element.text
+                    else None
+                ),
+                content_html=(
+                    content_element.text
+                    if content_element is not None and content_element.text
+                    else None
+                ),
+                alto_id=matches[0].alto_id if matches else legacy_alto_id,
                 score=score,
                 page_width=_optional_int_text(direct_children.get("p_width"), field="p_width"),
                 page_height=_optional_int_text(direct_children.get("p_height"), field="p_height"),
