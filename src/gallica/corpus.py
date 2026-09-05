@@ -6,7 +6,7 @@ import os
 from collections.abc import Iterable, Iterator
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from ._version import __version__
 from .ark import normalize_ark
@@ -359,11 +359,11 @@ class Corpus:
                     elif request.kind == "text":
                         self._write_atomic(request.path, doc.text())
                     elif request.kind == "alto":
-                        view = int(request.parameters["view"])
+                        view = int(cast(int | str, request.parameters["view"]))
                         self._write_atomic_bytes(request.path, doc.page(view).alto())
                     else:
-                        view = int(request.parameters["view"])
-                        width = int(request.parameters["width"])
+                        view = int(cast(int | str, request.parameters["view"]))
+                        width = int(cast(int | str, request.parameters["width"]))
                         self._write_atomic_bytes(
                             request.path,
                             doc.page(view).image(width=width, fmt="jpg"),
