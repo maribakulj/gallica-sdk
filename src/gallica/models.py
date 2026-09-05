@@ -80,11 +80,25 @@ class DocumentMetadata:
 
 
 @dataclass(frozen=True, slots=True)
+class ContentSearchMatch:
+    """One OCR word rectangle returned by ContentSearch with ``page``."""
+
+    alto_id: str
+    hpos: int
+    vpos: int
+    width: int
+    height: int
+
+
+@dataclass(frozen=True, slots=True)
 class ContentSearchItem:
     page_id: str | None
     content_html: str | None
     alto_id: str | None
     score: float | None
+    page_width: int | None = None
+    page_height: int | None = None
+    matches: tuple[ContentSearchMatch, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
