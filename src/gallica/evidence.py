@@ -145,11 +145,11 @@ def load_evidence_attestation(path: str | Path) -> EvidenceAttestation:
         raise ValueError("unsupported evidence attestation schema")
     records_raw = payload.get("records")
     if not isinstance(records_raw, list):
-        raise ValueError("attestation records must be a list")
+        raise TypeError("attestation records must be a list")
     records: list[EvidenceAttestationRecord] = []
     for raw in records_raw:
         if not isinstance(raw, dict):
-            raise ValueError("attestation record must be an object")
+            raise TypeError("attestation record must be an object")
         records.append(
             {
                 "evidence_id": str(raw["evidence_id"]),
@@ -196,7 +196,7 @@ def evidence_freshness(
             result.append({"id": item["id"], "state": "unknown", "age_days": None, "observed_at": None, "confidence": confidence})
             continue
         observed_at = record["observed_at"]
-        observed_date = datetime.fromisoformat(observed_at.replace("Z", "+00:00")).date()
+        observed_date = datetime.fromisoformat(observed_at).date()
         age_days = (today - observed_date).days
         threshold = item.get("freshness_days", 14)
         state = "fresh" if age_days <= threshold else "stale"
