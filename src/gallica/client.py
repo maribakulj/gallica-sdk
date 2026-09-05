@@ -7,17 +7,87 @@ from datetime import date, timedelta
 from typing import Self, cast
 from urllib.parse import quote
 
+import httpx
+
 from .agent import CapabilitySpec
 from .agent import capabilities as capability_contracts
 from .ark import ark_uri, normalize_ark
 from .corpus import Corpus
 from .document import Document
+from .exceptions import GallicaResponseError
 from .models import ContentSearchResults, DocumentMetadata, DublinCoreRecord, SearchResults
 from .parsing import parse_content_search, parse_oai_record, parse_sru
 from .periodical import Periodical
 from .transport import Transport
 
 BASE_URL = "https://gallica.bnf.fr"
+
+
+def _local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _looks_like_html(content: bytes) -> bool:
+    prefix = content.lstrip()[:64].lower()
+    return prefix.startswith((b"<!doctype html", b"<html"))
+
+
+def _reject_html(response: httpx.Response, *, service: str) -> None:
+    content_type = response.headers.get("Content-Type", "").lower()
+    if "text/html" in content_type or _looks_like_html(response.content):
+        raise GallicaResponseError(f"{service} returned HTML instead of the expected payload")
+
+
+def _validate_alto(response: httpx.Response) -> bytes:
+    _reject_html(response, service="ALTO")
+    try:
+        root = ET.fromstring(response.content)
+    except ET.ParseError as exc:
+        raise GallicaResponseError("ALTO response is not valid XML") from exc
+    if _local_name(root.tag).lower() != "alto":
+        raise GallicaResponseError(
+            f"ALTO response has unexpected root {_local_name(root.tag)!r}"
+        )
+    return response.content
+
+
+def _validate_image(response: httpx.Response) -> bytes:
+    content = response.content
+    if not content:
+        raise GallicaResponseError("IIIF image response is empty")
+    _reject_html(response, service="IIIF image")
+    content_type = response.headers.get("Content-Type", "").lower()
+    if content_type.startswith("image/"):
+        return content
+    signatures = (
+        b"\xff\xd8\xff",  # JPEG
+        b"\x89PNG\r\n\x1a\n",
+        b"GIF87a",
+        b"GIF89a",
+        b"RIFF",  # WebP container, checked conservatively
+        b"\x00\x00\x00\x0cjP  \r\n\x87\n",  # JPEG 2000 signature box
+    )
+    if any(content.startswith(signature) for signature in signatures):
+        return content
+    raise GallicaResponseError(
+        f"IIIF image response has unexpected content type {content_type or '<missing>'!r}"
+    )
+
+
+def _validate_text(response: httpx.Response) -> str:
+    """Validate Gallica's texteBrut representation.
+
+    Despite its name, the public service legitimately returns an HTML document
+    containing OCR text. HTML is therefore not itself an error. Anti-bot challenge
+    responses are rejected using the final URL and challenge-specific markers.
+    """
+    if not response.content.strip():
+        raise GallicaResponseError("plain OCR text response is empty")
+    final_path = response.url.path.lower()
+    prefix = response.content[:16384].lower()
+    if "/altcha" in final_path or b"altcha-widget" in prefix or b"/search/altcha" in prefix:
+        raise GallicaResponseError("plain OCR text request was redirected to an anti-bot challenge")
+    return response.text
 
 
 class Gallica:
@@ -119,13 +189,21 @@ class Gallica:
         response = self._transport.get(
             f"{BASE_URL}/services/Pagination", params={"ark": normalize_ark(ark)}
         )
-        root = ET.fromstring(response.content)
+        if _looks_like_html(response.content):
+            raise GallicaResponseError("Pagination returned HTML instead of XML")
+        try:
+            root = ET.fromstring(response.content)
+        except ET.ParseError as exc:
+            raise GallicaResponseError("Pagination response is not valid XML") from exc
         for element in root.iter():
-            if element.tag.rsplit("}", 1)[-1] == "nbVueImages" and element.text:
-                count = int(element.text)
+            if _local_name(element.tag) == "nbVueImages" and element.text:
+                try:
+                    count = int(element.text)
+                except ValueError as exc:
+                    raise GallicaResponseError("Pagination nbVueImages is not an integer") from exc
                 if count > 0:
                     return count
-        raise ValueError("Pagination response does not contain a valid nbVueImages")
+        raise GallicaResponseError("Pagination response does not contain a valid nbVueImages")
 
     def _text(self, ark: str, *, start_view: int | None = None, nviews: int | None = None) -> str:
         root = f"{BASE_URL}/ark:/12148/{normalize_ark(ark)}"
@@ -137,7 +215,7 @@ class Gallica:
             if nviews is None or nviews < 1:
                 raise ValueError("nviews must be >= 1 when start_view is provided")
             url = f"{root}/f{start_view}n{nviews}.texteBrut"
-        return self._transport.get(url, bucket="text").text
+        return _validate_text(self._transport.get(url, bucket="text"))
 
     def _content_search(
         self,
@@ -166,16 +244,23 @@ class Gallica:
             f"{BASE_URL}/RequestDigitalElement",
             params={"O": normalize_ark(ark), "E": "ALTO", "Deb": str(view)},
         )
-        return response.content
+        return _validate_alto(response)
 
     def _issue_for_date(self, ark: str, when: date) -> str | None:
         response = self._transport.get(
             f"{BASE_URL}/services/Issues",
             params={"ark": f"ark:/12148/{normalize_ark(ark)}/date", "date": str(when.year)},
         )
-        root = ET.fromstring(response.content)
+        try:
+            root = ET.fromstring(response.content)
+        except ET.ParseError as exc:
+            raise GallicaResponseError("Issues response is not valid XML") from exc
+        if _local_name(root.tag) not in {"issues", "results"}:
+            raise GallicaResponseError(
+                f"Issues response has unexpected root {_local_name(root.tag)!r}"
+            )
         for element in root.iter():
-            if element.tag.rsplit("}", 1)[-1] != "issue":
+            if _local_name(element.tag) != "issue":
                 continue
             issue_ark = element.attrib.get("ark")
             raw_day = element.attrib.get("dayOfYear")
@@ -193,9 +278,17 @@ class Gallica:
         if view < 1:
             raise ValueError("view must be >= 1")
         response = self._transport.get(f"{BASE_URL}/iiif/{ark_uri(ark)}/f{view}/info.json")
-        payload: object = response.json()
+        _reject_html(response, service="IIIF info.json")
+        try:
+            payload: object = response.json()
+        except ValueError as exc:
+            raise GallicaResponseError("IIIF info response is not valid JSON") from exc
         if not isinstance(payload, dict):
-            raise TypeError("IIIF info response is not a JSON object")
+            raise GallicaResponseError("IIIF info response is not a JSON object")
+        width = payload.get("width")
+        height = payload.get("height")
+        if not isinstance(width, int) or width < 1 or not isinstance(height, int) or height < 1:
+            raise GallicaResponseError("IIIF info response lacks positive integer width/height")
         return cast(dict[str, object], payload)
 
     @staticmethod
@@ -227,4 +320,5 @@ class Gallica:
             f"{BASE_URL}/iiif/{ark_uri(ark)}/f{view}/full/"
             f"{quote(size, safe=',!^')}/0/native.{fmt}"
         )
-        return self._transport.get(url, bucket=self._iiif_bucket(size)).content
+        response = self._transport.get(url, bucket=self._iiif_bucket(size))
+        return _validate_image(response)

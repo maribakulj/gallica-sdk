@@ -27,9 +27,19 @@ class FakeTransport:
         if url.endswith("/RequestDigitalElement"):
             return httpx.Response(200, content=b"<alto/>", request=request)
         if url.endswith("/info.json"):
-            return httpx.Response(200, content=json.dumps({"width": 10784}).encode(), request=request)
+            return httpx.Response(
+                200,
+                content=json.dumps({"width": 10784, "height": 7200}).encode(),
+                headers={"Content-Type": "application/json"},
+                request=request,
+            )
         if "/iiif/" in url:
-            return httpx.Response(200, content=b"jpeg", request=request)
+            return httpx.Response(
+                200,
+                content=b"\xff\xd8\xffjpeg",
+                headers={"Content-Type": "image/jpeg"},
+                request=request,
+            )
         if url.endswith("/SRU"):
             xml = b'''<srw:searchRetrieveResponse xmlns:srw="http://www.loc.gov/zing/srw/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"><srw:numberOfRecords>12</srw:numberOfRecords><srw:records><srw:record><srw:recordData><oai_dc:dc><dc:title>Verdun</dc:title><dc:creator>Auteur</dc:creator><dc:identifier>https://gallica.bnf.fr/ark:/12148/bpt6k123</dc:identifier></oai_dc:dc></srw:recordData></srw:record></srw:records></srw:searchRetrieveResponse>'''
             return httpx.Response(200, content=xml, request=request)
@@ -59,7 +69,7 @@ def test_document_and_page_vertical_slice() -> None:
     page = doc.page(3)
     assert page.alto() == b"<alto/>"
     assert page.iiif_info()["width"] == 10784
-    assert page.image() == b"jpeg"
+    assert page.image() == b"\xff\xd8\xffjpeg"
 
     image_call = next(call for call in transport.calls if "/iiif/" in call[0] and not call[0].endswith("info.json"))
     assert "/full/1000,/0/native.jpg" in image_call[0]

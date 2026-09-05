@@ -3,6 +3,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
+from .exceptions import GallicaResponseError
 from .models import (
     ContentSearchItem,
     ContentSearchResults,
@@ -18,6 +19,18 @@ def _local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+def _parse_xml(xml: str, *, expected_root: str) -> ET.Element:
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError as exc:
+        raise GallicaResponseError(f"invalid XML response for {expected_root}") from exc
+    if _local_name(root.tag) != expected_root:
+        raise GallicaResponseError(
+            f"unexpected XML root {_local_name(root.tag)!r}; expected {expected_root!r}"
+        )
+    return root
+
+
 def _dc_record(element: ET.Element) -> DublinCoreRecord:
     values: dict[str, list[str]] = defaultdict(list)
     for child in element:
@@ -29,7 +42,7 @@ def _dc_record(element: ET.Element) -> DublinCoreRecord:
 
 
 def parse_sru(xml: str, *, fallback_query: str) -> SearchResults:
-    root = ET.fromstring(xml)
+    root = _parse_xml(xml, expected_root="searchRetrieveResponse")
     total = 0
     query = fallback_query
     records: list[DublinCoreRecord] = []
@@ -37,7 +50,10 @@ def parse_sru(xml: str, *, fallback_query: str) -> SearchResults:
     for element in root.iter():
         name = _local_name(element.tag)
         if name == "numberOfRecords" and element.text:
-            total = int(element.text)
+            try:
+                total = int(element.text)
+            except ValueError as exc:
+                raise GallicaResponseError("SRU numberOfRecords is not an integer") from exc
         elif name == "query" and element.text and query == fallback_query:
             query = element.text.strip()
         elif name == "dc" and element.tag.endswith("}dc"):
@@ -47,7 +63,7 @@ def parse_sru(xml: str, *, fallback_query: str) -> SearchResults:
 
 
 def parse_oai_record(xml: str, *, ark: str) -> DocumentMetadata:
-    root = ET.fromstring(xml)
+    root = _parse_xml(xml, expected_root="results")
     dc_element: ET.Element | None = None
     indexing_mode: str | None = None
     ocr_quality: float | None = None
@@ -75,12 +91,12 @@ def parse_oai_record(xml: str, *, ark: str) -> DocumentMetadata:
 
 
 def parse_content_search(xml: str, *, fallback_query: str) -> ContentSearchResults:
-    root = ET.fromstring(xml)
+    root = _parse_xml(xml, expected_root="results")
     total_raw = root.attrib.get("countResults", "0")
     try:
         total = int(total_raw)
-    except ValueError:
-        total = 0
+    except ValueError as exc:
+        raise GallicaResponseError("ContentSearch countResults is not an integer") from exc
 
     query = fallback_query
     items: list[ContentSearchItem] = []

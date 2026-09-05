@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 import httpx
@@ -9,6 +11,11 @@ import httpx
 from ._version import __version__
 
 _RETRYABLE = {429, 500, 502, 503, 504}
+_DEFAULT_INTERVALS = {
+    "default": 0.0,
+    "text": 12.5,
+    "iiif_hd": 12.5,
+}
 
 
 class Transport:
@@ -23,6 +30,14 @@ class Transport:
         intervals: Mapping[str, float] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
+        if timeout <= 0:
+            raise ValueError("timeout must be > 0")
+        if retries < 0:
+            raise ValueError("retries must be >= 0")
+        selected_intervals = _DEFAULT_INTERVALS if intervals is None else intervals
+        if any(value < 0 for value in selected_intervals.values()):
+            raise ValueError("rate-limit intervals must be >= 0")
+
         self._owns_client = client is None
         self._client = client or httpx.Client(
             timeout=timeout,
@@ -36,14 +51,7 @@ class Transport:
             },
         )
         self._retries = retries
-        self._intervals = dict(
-            intervals
-            or {
-                "default": 0.0,
-                "text": 12.5,
-                "iiif_hd": 12.5,
-            }
-        )
+        self._intervals = dict(selected_intervals)
         self._last_call: dict[str, float] = {}
         self._sleep = sleeper
 
@@ -61,14 +69,25 @@ class Transport:
         self._last_call[bucket] = time.monotonic()
 
     @staticmethod
-    def _retry_after(response: httpx.Response, attempt: int) -> float:
+    def _backoff(attempt: int) -> float:
+        return min(2.0**attempt, 8.0)
+
+    @classmethod
+    def _retry_after(cls, response: httpx.Response, attempt: int) -> float:
         raw = response.headers.get("Retry-After")
         if raw is not None:
             try:
                 return max(0.0, float(raw))
             except ValueError:
-                pass
-        return min(2.0**attempt, 8.0)
+                try:
+                    retry_at = parsedate_to_datetime(raw)
+                except (TypeError, ValueError, OverflowError):
+                    pass
+                else:
+                    if retry_at.tzinfo is None:
+                        retry_at = retry_at.replace(tzinfo=UTC)
+                    return max(0.0, (retry_at - datetime.now(UTC)).total_seconds())
+        return cls._backoff(attempt)
 
     def get(
         self,
@@ -80,13 +99,21 @@ class Transport:
         last_response: httpx.Response | None = None
         for attempt in range(self._retries + 1):
             self._throttle(bucket)
-            response = self._client.get(url, params=params)
+            try:
+                response = self._client.get(url, params=params)
+            except httpx.TransportError:
+                if attempt >= self._retries:
+                    raise
+                self._sleep(self._backoff(attempt))
+                continue
+
             last_response = response
             if response.status_code not in _RETRYABLE:
                 response.raise_for_status()
                 return response
             if attempt < self._retries:
                 self._sleep(self._retry_after(response, attempt))
+
         assert last_response is not None
         last_response.raise_for_status()
         raise RuntimeError("unreachable")

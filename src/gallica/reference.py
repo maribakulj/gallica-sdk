@@ -45,7 +45,7 @@ SERVICES: tuple[ServiceSpec, ...] = (
     {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ("https://api.bnf.fr/",), "notes": ("nbVueImages is used as the image-view count",)},
     {"id": "issues", "name": "Gallica Issues", "kind": "periodicals", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Issues", "documentation": ("https://api.bnf.fr/",), "notes": ("dated issue resolution uses dayOfYear",)},
     {"id": "content-search", "name": "Gallica ContentSearch", "kind": "ocr-search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/ContentSearch", "documentation": ("https://api.bnf.fr/",), "notes": ("startResult is 1-based when supplied",)},
-    {"id": "text", "name": "Gallica plain OCR text", "kind": "ocr", "status": "live-validated", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ("https://api.bnf.fr/fr/node/232",), "notes": ("public quota documented as 5 requests/minute",)},
+    {"id": "text", "name": "Gallica plain OCR text", "kind": "ocr", "status": "environment-limited", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ("https://api.bnf.fr/fr/node/232", "https://api.bnf.fr/fr/api-document-de-gallica"), "notes": ("public quota documented as 5 requests/minute", "texteBrut legitimately returns an HTML representation containing OCR text", "public cold CI runners were redirected to Gallica's anti-bot challenge on 2026-09-05; the SDK detects and rejects that challenge")},
     {"id": "alto", "name": "Gallica ALTO", "kind": "ocr", "status": "live-validated", "base_url": "https://gallica.bnf.fr/RequestDigitalElement", "documentation": ("https://api.bnf.fr/",), "notes": ("views are 1-based",)},
     {"id": "iiif-image", "name": "Gallica IIIF Image", "kind": "image", "status": "live-validated", "base_url": "https://gallica.bnf.fr/iiif/", "documentation": ("https://api.bnf.fr/", "https://api.bnf.fr/fr/node/232"), "notes": ("1000px is the conservative SDK default", "width above 1000px is handled as high definition")},
     {"id": "pdf", "name": "Gallica PDF representation", "kind": "document", "status": "not-supported", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ("https://api.bnf.fr/fr/node/232",), "notes": ("historical automated URL forms returned HTML in public CI validation", "the SDK intentionally exposes no pdf() method")},
@@ -67,7 +67,8 @@ def programmable_reference() -> ReferenceSpec:
         "evidence": evidence(),
         "capability_evidence": capability_evidence(),
         "invariants": (
-            "A network capability is not marked supported without a relevant public live test.",
+            "A network capability is not marked live-validated without a relevant public live test.",
+            "Environment-limited services remain explicit when upstream access controls prevent reproducible cold-runner validation.",
             "Every live-test evidence record carries an observation timestamp, tested commit and CI run.",
             "Evidence freshness is evaluated separately from support status and can become stale without changing the historical observation.",
             "Every service/evidence reference in capability_evidence must resolve in this manifest.",

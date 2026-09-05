@@ -11,6 +11,7 @@ from .evidence import (
     evidence,
     evidence_freshness,
 )
+from .exceptions import GallicaError, GallicaResponseError
 from .models import (
     ContentSearchItem,
     ContentSearchResults,
@@ -37,6 +38,8 @@ __all__ = [
     "EvidenceFreshness",
     "EvidenceSpec",
     "Gallica",
+    "GallicaError",
+    "GallicaResponseError",
     "OperationalContract",
     "Page",
     "Periodical",
