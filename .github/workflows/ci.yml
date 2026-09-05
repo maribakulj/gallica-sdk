@@ -43,7 +43,7 @@ jobs:
           python -m venv /tmp/gallica-wheel
           /tmp/gallica-wheel/bin/python -m pip install dist/*.whl
           /tmp/gallica-wheel/bin/python -m pip check
-          /tmp/gallica-wheel/bin/python -c "from importlib.metadata import version; from gallica import Gallica, __version__, programmable_reference; assert __version__ == version('gallica-sdk'); assert Gallica.capabilities(); assert programmable_reference()['schema_version']"
+          /tmp/gallica-wheel/bin/python -c "from importlib.metadata import version; from importlib.resources import files; from gallica import Gallica, __version__, programmable_reference; assert __version__ == version('gallica-sdk'); assert Gallica.capabilities(); assert programmable_reference()['schema_version']; assert (files('gallica') / 'py.typed').is_file()"
           /tmp/gallica-wheel/bin/gallica capabilities > /tmp/gallica-capabilities.json
           /tmp/gallica-wheel/bin/python -c "import json; data=json.load(open('/tmp/gallica-capabilities.json')); assert any(item['id']=='page_alto' for item in data)"
       - name: Install sdist in isolation
@@ -51,7 +51,7 @@ jobs:
           python -m venv /tmp/gallica-sdist
           /tmp/gallica-sdist/bin/python -m pip install dist/*.tar.gz
           /tmp/gallica-sdist/bin/python -m pip check
-          /tmp/gallica-sdist/bin/python -c "from importlib.metadata import version; import gallica; assert gallica.__version__ == version('gallica-sdk')"
+          /tmp/gallica-sdist/bin/python -c "from importlib.metadata import version; from importlib.resources import files; import gallica; assert gallica.__version__ == version('gallica-sdk'); assert (files('gallica') / 'py.typed').is_file()"
           /tmp/gallica-sdist/bin/gallica contract page_alto > /tmp/gallica-contract.json
           /tmp/gallica-sdist/bin/python -c "import json; data=json.load(open('/tmp/gallica-contract.json')); assert data['call']=='Page.alto'"
 
