@@ -1,0 +1,49 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install build twine
+      - name: Validate project metadata
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            python scripts/validate_release.py --tag "${GITHUB_REF_NAME}"
+          else
+            python scripts/validate_release.py
+          fi
+      - run: python -m build
+      - run: twine check dist/*
+      - name: Install wheel in isolated environment
+        run: |
+          python -m venv /tmp/gallica-wheel
+          /tmp/gallica-wheel/bin/python -m pip install --upgrade pip
+          /tmp/gallica-wheel/bin/python -m pip install dist/*.whl
+          /tmp/gallica-wheel/bin/python -m pip check
+          /tmp/gallica-wheel/bin/python -c "from importlib.metadata import version; import gallica; assert gallica.__version__ == version('gallica-sdk')"
+      - name: Install sdist in isolated environment
+        run: |
+          python -m venv /tmp/gallica-sdist
+          /tmp/gallica-sdist/bin/python -m pip install --upgrade pip
+          /tmp/gallica-sdist/bin/python -m pip install dist/*.tar.gz
+          /tmp/gallica-sdist/bin/python -m pip check
+          /tmp/gallica-sdist/bin/python -c "from importlib.metadata import version; import gallica; assert gallica.__version__ == version('gallica-sdk')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gallica-sdk-dist
+          path: dist/*
+          if-no-files-found: error
