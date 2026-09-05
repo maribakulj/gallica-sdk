@@ -12,7 +12,7 @@
     "authority": {"type": "string"},
     "capabilities_export": {"type": "string"},
     "operational_contracts_export": {"type": "string"},
-    "services": {"type": "array", "items": {"type": "object", "required": ["id", "name", "kind", "status", "base_url", "documentation", "notes"], "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "kind": {"type": "string"}, "status": {"enum": ["live-validated", "not-supported"]}, "base_url": {"type": "string"}, "documentation": {"type": "array", "items": {"type": "string"}}, "notes": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}},
+    "services": {"type": "array", "items": {"type": "object", "required": ["id", "name", "kind", "status", "base_url", "documentation", "notes"], "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "kind": {"type": "string"}, "status": {"enum": ["live-validated", "environment-limited", "not-supported"]}, "base_url": {"type": "string"}, "documentation": {"type": "array", "items": {"type": "string"}}, "notes": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}},
     "capability_index": {"type": "array", "items": {"type": "object", "required": ["id", "call"], "properties": {"id": {"type": "string"}, "call": {"type": "string"}}, "additionalProperties": false}},
     "evidence": {
       "type": "array",
