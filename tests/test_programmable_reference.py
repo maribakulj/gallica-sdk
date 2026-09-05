@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from gallica.agent import capabilities
-from gallica.evidence import evidence_freshness
+from gallica.evidence import build_evidence_attestation, evidence_freshness
 from gallica.reference import REFERENCE_SCHEMA_VERSION, programmable_reference
 
 
@@ -69,25 +69,26 @@ def test_live_validated_network_capabilities_have_live_evidence() -> None:
             assert set(item["evidence"]) & live_ids, item["capability"]
 
 
-def test_live_evidence_has_observation_provenance() -> None:
-    for item in programmable_reference()["evidence"]:
-        if item["kind"] != "live-test":
-            continue
-        assert item["observed_at"].endswith("Z")
-        assert len(item["observed_commit"]) == 40
-        assert item["observed_run"].startswith("https://github.com/")
-        assert item["freshness_days"] >= 1
-        assert item["confidence"] in {"high", "medium", "low"}
+def test_historical_evidence_provenance_is_not_treated_as_current_attestation() -> None:
+    current = {item["id"]: item for item in evidence_freshness(as_of=date(2026, 9, 5))}
+    assert current["live.vertical_slice"]["state"] == "unknown"
+    assert current["live.vertical_slice"]["observed_at"] is None
+    assert current["example.search_to_corpus"]["state"] == "not-applicable"
 
 
-def test_evidence_freshness_changes_without_rewriting_history() -> None:
-    fresh = {item["id"]: item for item in evidence_freshness(as_of=date(2026, 9, 4))}
-    stale = {item["id"]: item for item in evidence_freshness(as_of=date(2026, 10, 1))}
+def test_ci_attestation_drives_freshness_without_rewriting_declarations() -> None:
+    attestation = build_evidence_attestation(
+        commit="a" * 40,
+        run_url="https://github.com/example/repo/actions/runs/42",
+        observed_at="2026-09-05T10:00:00Z",
+    )
+    fresh = {item["id"]: item for item in evidence_freshness(attestation=attestation, as_of=date(2026, 9, 10))}
+    stale = {item["id"]: item for item in evidence_freshness(attestation=attestation, as_of=date(2026, 10, 1))}
     assert fresh["live.vertical_slice"]["state"] == "fresh"
-    assert fresh["live.vertical_slice"]["age_days"] == 0
+    assert fresh["live.vertical_slice"]["age_days"] == 5
+    assert fresh["live.vertical_slice"]["observed_at"] == "2026-09-05T10:00:00Z"
     assert stale["live.vertical_slice"]["state"] == "stale"
-    assert stale["live.vertical_slice"]["age_days"] == 27
-    assert fresh["example.search_to_corpus"]["state"] == "not-applicable"
+    assert stale["live.vertical_slice"]["age_days"] == 26
 
 
 def test_evidence_targets_exist_in_repository() -> None:
