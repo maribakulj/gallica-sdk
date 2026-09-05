@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, date, datetime
+from pathlib import Path
 from typing import TypedDict
 
 
@@ -23,6 +25,23 @@ class LiveObservation(TypedDict):
     observed_run: str
     freshness_days: int
     confidence: str
+
+
+class EvidenceAttestationRecord(TypedDict):
+    evidence_id: str
+    outcome: str
+    observed_at: str
+    commit: str
+    run_url: str
+    confidence: str
+
+
+class EvidenceAttestation(TypedDict):
+    schema_version: str
+    generated_at: str
+    commit: str
+    run_url: str
+    records: tuple[EvidenceAttestationRecord, ...]
 
 
 class CapabilityEvidence(TypedDict):
@@ -86,21 +105,102 @@ def capability_evidence() -> tuple[CapabilityEvidence, ...]:
     return CAPABILITY_EVIDENCE
 
 
-def evidence_freshness(*, as_of: date | None = None) -> tuple[EvidenceFreshness, ...]:
-    """Classify live evidence as fresh/stale relative to its observation timestamp."""
+def build_evidence_attestation(
+    *,
+    commit: str,
+    run_url: str,
+    observed_at: str | None = None,
+) -> EvidenceAttestation:
+    """Build an attestation after the complete live-test suite has passed."""
+    if len(commit) != 40:
+        raise ValueError("commit must be a full 40-character SHA")
+    if not run_url.startswith("https://"):
+        raise ValueError("run_url must be an https URL")
+    timestamp = observed_at or datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    records = tuple(
+        EvidenceAttestationRecord(
+            evidence_id=item["id"],
+            outcome="passed",
+            observed_at=timestamp,
+            commit=commit,
+            run_url=run_url,
+            confidence=item.get("confidence", "high"),
+        )
+        for item in EVIDENCE
+        if item["kind"] == "live-test"
+    )
+    return {
+        "schema_version": "1.0",
+        "generated_at": timestamp,
+        "commit": commit,
+        "run_url": run_url,
+        "records": records,
+    }
+
+
+def load_evidence_attestation(path: str | Path) -> EvidenceAttestation:
+    """Load and minimally validate a CI-generated evidence attestation."""
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if payload.get("schema_version") != "1.0":
+        raise ValueError("unsupported evidence attestation schema")
+    records_raw = payload.get("records")
+    if not isinstance(records_raw, list):
+        raise ValueError("attestation records must be a list")
+    records: list[EvidenceAttestationRecord] = []
+    for raw in records_raw:
+        if not isinstance(raw, dict):
+            raise ValueError("attestation record must be an object")
+        records.append(
+            {
+                "evidence_id": str(raw["evidence_id"]),
+                "outcome": str(raw["outcome"]),
+                "observed_at": str(raw["observed_at"]),
+                "commit": str(raw["commit"]),
+                "run_url": str(raw["run_url"]),
+                "confidence": str(raw["confidence"]),
+            }
+        )
+    return {
+        "schema_version": "1.0",
+        "generated_at": str(payload["generated_at"]),
+        "commit": str(payload["commit"]),
+        "run_url": str(payload["run_url"]),
+        "records": tuple(records),
+    }
+
+
+def evidence_freshness(
+    *,
+    attestation: EvidenceAttestation | None = None,
+    as_of: date | None = None,
+) -> tuple[EvidenceFreshness, ...]:
+    """Classify live evidence from an explicit CI attestation.
+
+    Historical observation fields embedded in evidence declarations are retained for
+    backwards compatibility, but are deliberately not treated as current freshness.
+    Without an attestation, live evidence is therefore ``unknown``.
+    """
     today = as_of or datetime.now(UTC).date()
+    attested = {
+        record["evidence_id"]: record
+        for record in (attestation["records"] if attestation is not None else ())
+    }
     result: list[EvidenceFreshness] = []
     for item in EVIDENCE:
-        observed_at = item.get("observed_at")
         confidence = item.get("confidence")
         if item["kind"] != "live-test":
-            result.append({"id": item["id"], "state": "not-applicable", "age_days": None, "observed_at": observed_at, "confidence": confidence})
+            result.append({"id": item["id"], "state": "not-applicable", "age_days": None, "observed_at": None, "confidence": confidence})
             continue
-        if observed_at is None:
+        record = attested.get(item["id"])
+        if record is None:
             result.append({"id": item["id"], "state": "unknown", "age_days": None, "observed_at": None, "confidence": confidence})
             continue
-        observed_date = datetime.fromisoformat(observed_at).date()
+        observed_at = record["observed_at"]
+        observed_date = datetime.fromisoformat(observed_at.replace("Z", "+00:00")).date()
         age_days = (today - observed_date).days
         threshold = item.get("freshness_days", 14)
-        result.append({"id": item["id"], "state": "fresh" if age_days <= threshold else "stale", "age_days": age_days, "observed_at": observed_at, "confidence": confidence})
+        state = "fresh" if age_days <= threshold else "stale"
+        if record["outcome"] != "passed":
+            state = "failed"
+        result.append({"id": item["id"], "state": state, "age_days": age_days, "observed_at": observed_at, "confidence": record["confidence"]})
     return tuple(result)
