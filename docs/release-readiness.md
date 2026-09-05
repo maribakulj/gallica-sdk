@@ -7,20 +7,23 @@
 - [x] typed public Python API;
 - [x] unit and simulated integration tests;
 - [x] live smoke tests against public Gallica services;
+- [x] weekly live-evidence revalidation workflow;
+- [x] CI-generated evidence attestations tied to exact commits and Actions runs;
 - [x] Python 3.11 and 3.12 CI;
 - [x] Ruff and mypy strict;
 - [x] wheel and sdist build validation;
 - [x] `twine check` metadata validation;
 - [x] isolated wheel installation and `pip check`;
 - [x] isolated sdist installation and `pip check`;
-- [x] resumable corpus workflow;
+- [x] resumable corpus workflow with request fingerprints, checksums and failure provenance;
 - [x] machine-readable capability contracts;
 - [x] resolved operational contracts for agents;
-- [x] programmable reference and JSON Schema;
-- [x] validation evidence graph with dated CI provenance;
+- [x] programmable reference and executable JSON Schema validation;
+- [x] validation evidence graph with historical provenance plus current CI attestations;
+- [x] minimal JSON-first CLI tested from wheel and sdist;
 - [x] project changelog;
 - [x] package metadata URLs and classifiers;
-- [x] user-facing guides for search, documents, periodicals, corpus, quotas and errors;
+- [x] user-facing guides for search, documents, periodicals, corpus, quotas, errors and CLI;
 - [x] executable reference notebooks validated in CI;
 - [x] release metadata/tag validator;
 - [x] non-publishing release-candidate workflow retaining validated artifacts.
@@ -37,7 +40,6 @@
 The following features are intentionally not required for the first release:
 
 - PDF support;
-- CLI;
 - MCP;
 - async API;
 - Parquet/DataFrame integration;
