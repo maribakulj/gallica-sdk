@@ -11,7 +11,7 @@ Le projet ne crée pas une nouvelle API réseau et ne remplace pas la documentat
 
 ## Statut
 
-**0.2.0.dev0 — corpus reprenable, recherche paginée, packaging vérifié, référence programmable, contrats opérationnels résolus, provenance des preuves et notebooks exécutés en CI.**
+**0.2.0.dev0 — corpus reprenable avec provenance, recherche paginée, packaging vérifié, CLI JSON, référence programmable, contrats opérationnels résolus, attestations CI et notebooks exécutés.**
 
 Aucune release stable n'est encore publiée. Le dépôt prépare sa première release publique.
 
@@ -115,11 +115,25 @@ with Gallica() as gallica:
     )
 ```
 
-Les écritures sont atomiques, une erreur sur un ARK n'interrompt pas les suivants, et `resume=True` ne récupère que les artefacts manquants. Guide : [`docs/corpus.md`](docs/corpus.md).
+Les écritures sont atomiques. La reprise vérifie fingerprint de requête, taille et SHA-256 au lieu de considérer qu'un fichier présent est nécessairement valable. Les erreurs sont isolées par artefact : un échec de métadonnée n'empêche pas un ALTO ou une image indépendants du même ARK, et les succès partiels restent réutilisables au prochain `resume`. Le manifest conserve également paramètres, version SDK et provenance des échecs. Guide : [`docs/corpus.md`](docs/corpus.md).
+
+## CLI
+
+Le package installe une CLI volontairement mince, JSON-first, qui réutilise le même SDK plutôt que réimplémenter une seconde logique réseau :
+
+```bash
+gallica capabilities
+gallica contract page_alto
+gallica search 'gallica all "Verdun"' --maximum-records 5
+gallica metadata bpt6k5738219s
+gallica page-count bpt6k5738219s
+```
+
+Elle est testée après installation isolée du wheel et du sdist. Guide : [`docs/cli.md`](docs/cli.md).
 
 ## Référence programmable
 
-Un agent n'a pas besoin d'installer le package pour découvrir le périmètre validé :
+Un agent n'a pas besoin d'installer le package pour découvrir le périmètre déclaré :
 
 ```text
 reference/
@@ -127,7 +141,7 @@ reference/
 └── schema.json
 ```
 
-Le manifeste est actuellement en `schema_version: 2.0`. Il expose les services, l'index des capacités, les preuves live, leur provenance et les invariants du projet, ainsi que les commandes d'export des contrats détaillés et opérationnels.
+Le manifeste est actuellement en `schema_version: 2.0`. Il expose les services, l'index des capacités, les preuves live, leur provenance historique et les invariants du projet, ainsi que les commandes d'export des contrats détaillés et opérationnels. Le JSON checked-in est validé réellement contre son JSON Schema en CI.
 
 ### Contrat minimal
 
@@ -154,15 +168,17 @@ Pour un agent qui doit décider comment exécuter réellement une opération, `o
 - fraîcheur de ces preuves ;
 - exemple lié lorsqu'il existe.
 
-```python
-from gallica import operational_contract
+Sans attestation CI explicite, la fraîcheur live est `unknown` : un vieux timestamp checked-in n'est plus présenté comme état courant. Une attestation générée après succès des tests live peut être chargée et fournie au contrat :
 
-contract = operational_contract("page_alto")
-print(contract["call"])
-print(contract["services"])
-print(contract["errors"])
+```python
+from gallica import load_evidence_attestation, operational_contract
+
+attestation = load_evidence_attestation("evidence-attestation.json")
+contract = operational_contract("page_alto", attestation=attestation)
 print(contract["freshness"])
 ```
+
+La CI génère `evidence-attestation.json` uniquement après réussite de la suite live et l'archive comme artefact GitHub Actions. Un workflow séparé revalide ces preuves chaque semaine même en l'absence de nouveau commit.
 
 Tous les contrats peuvent être exportés en JSON :
 
@@ -174,11 +190,13 @@ python scripts/export_reference.py > reference.json
 
 Le contrat opérationnel est assemblé depuis les sources canoniques existantes. Il ne constitue pas une seconde vérité indépendante qui recopierait services et preuves.
 
-Documentation agent : [`docs/agents.md`](docs/agents.md). Preuves et fraîcheur : [`docs/evidence.md`](docs/evidence.md).
+Documentation agent : [`docs/agents.md`](docs/agents.md). Preuves, attestations et fraîcheur : [`docs/evidence.md`](docs/evidence.md).
 
 ## Quotas et erreurs
 
-Le transport partagé centralise les retries et les buckets de throttling. `.texteBrut` est limité de manière conservatrice à un appel toutes les 12,5 secondes ; les images IIIF au-dessus de 1000 px utilisent le bucket HD.
+Le transport partagé centralise les retries, `Retry-After` et les buckets de throttling. Il rejoue aussi les erreurs réseau transitoires de manière bornée. Un HTTP 200 n'est pas accepté aveuglément : ALTO, IIIF et réponses structurées sont validés sémantiquement.
+
+`.texteBrut` a un comportement particulier : sa représentation publique peut légitimement être HTML, mais les runners publics peuvent être redirigés vers un challenge anti-bot. Le SDK détecte ce challenge au lieu de l'enregistrer comme OCR et le service est donc déclaré `environment-limited` dans la référence.
 
 - quotas : [`docs/quotas.md`](docs/quotas.md) ;
 - erreurs et limitations : [`docs/errors.md`](docs/errors.md).
@@ -207,11 +225,13 @@ Le SDK ne fournit pas `pdf()`. Les formes historiques `f1n1.pdf` et `f1.pdf` tes
 __version__ -> str
 programmable_reference() -> ReferenceSpec
 capabilities() -> tuple[CapabilitySpec, ...]
-operational_contracts() -> tuple[OperationalContract, ...]
-operational_contract(id) -> OperationalContract
+operational_contracts(attestation=...) -> tuple[OperationalContract, ...]
+operational_contract(id, attestation=...) -> OperationalContract
 evidence() -> tuple[EvidenceSpec, ...]
 capability_evidence() -> tuple[CapabilityEvidence, ...]
-evidence_freshness() -> tuple[EvidenceFreshness, ...]
+build_evidence_attestation(...) -> EvidenceAttestation
+load_evidence_attestation(path) -> EvidenceAttestation
+evidence_freshness(attestation=...) -> tuple[EvidenceFreshness, ...]
 Gallica.capabilities() -> tuple[CapabilitySpec, ...]
 Gallica.search() -> SearchResults
 Gallica.search_all() -> Iterator[DublinCoreRecord]
@@ -231,6 +251,9 @@ Page.iiif_info() -> dict
 Page.image() -> bytes
 Periodical.issue() -> Document | None
 Corpus.fetch() -> CorpusReport
+CorpusItemResult.failure_details -> tuple[CorpusArtifactFailure, ...]
+CorpusItemResult.retryable -> bool
+CorpusReport.retryable -> tuple[CorpusItemResult, ...]
 ```
 
 ## Validation
@@ -243,7 +266,7 @@ pytest -m live tests/test_live.py tests/test_live_usability.py
 python scripts/execute_notebooks.py
 ```
 
-La CI exécute Python 3.11 et 3.12, Ruff, mypy strict, tests déterministes, wheel/sdist avec réinstallation, smoke tests Gallica publics et notebooks de référence.
+La CI exécute Python 3.11 et 3.12, Ruff, mypy strict, tests déterministes, validation JSON Schema, wheel/sdist avec réinstallation, smoke tests Gallica publics, attestations de preuve et notebooks de référence. Le workflow `Live evidence` relance les tests publics chaque semaine.
 
 ## Documentation
 
@@ -251,14 +274,16 @@ La CI exécute Python 3.11 et 3.12, Ruff, mypy strict, tests déterministes, whe
 - [`docs/search.md`](docs/search.md) : SRU, pagination et JSONL ;
 - [`docs/documents.md`](docs/documents.md) : métadonnées, OCR, ALTO et IIIF ;
 - [`docs/periodicals.md`](docs/periodicals.md) : numéros datés ;
-- [`docs/corpus.md`](docs/corpus.md) : reprise, manifest et erreurs par ARK ;
+- [`docs/corpus.md`](docs/corpus.md) : reprise, manifest et erreurs par artefact ;
 - [`docs/quotas.md`](docs/quotas.md) : comportement réseau et throttling ;
 - [`docs/errors.md`](docs/errors.md) : erreurs et limitations ;
+- [`docs/cli.md`](docs/cli.md) : CLI JSON-first ;
 - [`docs/architecture.md`](docs/architecture.md) : architecture et non-objectifs ;
 - [`docs/capabilities.md`](docs/capabilities.md) : matrice humaine des capacités ;
 - [`docs/agents.md`](docs/agents.md) : usage par agents ;
-- [`docs/evidence.md`](docs/evidence.md) : preuves, provenance et fraîcheur ;
+- [`docs/evidence.md`](docs/evidence.md) : preuves, attestations et fraîcheur ;
 - [`docs/release-readiness.md`](docs/release-readiness.md) : préparation de release ;
+- [`docs/releasing.md`](docs/releasing.md) : procédure de release ;
 - [`AGENTS.md`](AGENTS.md) : contraintes pour agents de développement.
 
 Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage sur les wrappers historiques et leurs défauts. `gallica-sdk` n'en dépend pas et ne reprend pas leur architecture legacy.
@@ -269,5 +294,4 @@ Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage su
 - sélection implicite de toutes les vues ;
 - export Parquet / DataFrame intégré ;
 - parallélisme / async ;
-- CLI ;
 - MCP.
