@@ -1,7 +1,13 @@
 from ._version import __version__
 from .agent import CapabilitySpec, capabilities
 from .client import Gallica
-from .corpus import Corpus, CorpusArtifactRecord, CorpusItemResult, CorpusReport
+from .corpus import (
+    Corpus,
+    CorpusArtifactFailure,
+    CorpusArtifactRecord,
+    CorpusItemResult,
+    CorpusReport,
+)
 from .document import Document, Page
 from .evidence import (
     CapabilityEvidence,
@@ -29,6 +35,7 @@ __all__ = [
     "ContentSearchItem",
     "ContentSearchResults",
     "Corpus",
+    "CorpusArtifactFailure",
     "CorpusArtifactRecord",
     "CorpusItemResult",
     "CorpusReport",
