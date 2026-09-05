@@ -109,7 +109,7 @@ CAPABILITIES: tuple[CapabilitySpec, ...] = (
     {
         "id": "content_search",
         "call": "Document.search_text",
-        "description": "Search within OCR and return typed result items plus raw XML.",
+        "description": "Search within OCR and return one typed ContentSearch page plus raw XML.",
         "returns": "ContentSearchResults",
         "network_service": "services/ContentSearch",
         "parameters": (
@@ -117,7 +117,29 @@ CAPABILITIES: tuple[CapabilitySpec, ...] = (
             {"name": "page", "type": "int | None", "required": False, "default": None},
             {"name": "start_result", "type": "int | None", "required": False, "default": None},
         ),
-        "constraints": ("page and start_result must be >= 1 when supplied",),
+        "constraints": (
+            "page and start_result must be >= 1 when supplied",
+            "the public service returns at most 10 items per request",
+            "when page is supplied, OCR word rectangles are returned relative to p_width/p_height",
+            "raw XML remains available as raw_xml",
+        ),
+    },
+    {
+        "id": "content_search_all",
+        "call": "Document.search_text_all",
+        "description": "Iterate lazily over ContentSearch results without manually managing startResult.",
+        "returns": "Iterator[ContentSearchItem]",
+        "network_service": "services/ContentSearch",
+        "parameters": (
+            {"name": "query", "type": "str", "required": True},
+            {"name": "page", "type": "int | None", "required": False, "default": None},
+            {"name": "limit", "type": "int | None", "required": False, "default": None},
+        ),
+        "constraints": (
+            "page must be >= 1 when supplied",
+            "limit must be >= 1 when supplied",
+            "pagination is lazy and follows the service's 10-item page cap",
+        ),
     },
     {
         "id": "page_text",
@@ -174,7 +196,7 @@ CAPABILITIES: tuple[CapabilitySpec, ...] = (
     {
         "id": "corpus_fetch",
         "call": "Corpus.fetch",
-        "description": "Fetch resumable corpus artifacts with atomic writes and per-ARK failure isolation.",
+        "description": "Fetch resumable corpus artifacts with atomic writes and per-artifact failure isolation.",
         "returns": "CorpusReport",
         "network_service": "composition of supported SDK primitives",
         "parameters": (
@@ -190,8 +212,8 @@ CAPABILITIES: tuple[CapabilitySpec, ...] = (
         "constraints": (
             "ALTO or images require explicit views",
             "there is no implicit all-pages mode",
-            "resume checks requested files on disk",
-            "ordinary per-ARK failures do not stop later ARKs",
+            "resume validates request fingerprint, byte size and SHA-256",
+            "ordinary per-artifact failures do not stop independent artifacts or later ARKs",
         ),
     },
 )
