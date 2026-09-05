@@ -11,11 +11,15 @@ from .corpus import (
 from .document import Document, Page
 from .evidence import (
     CapabilityEvidence,
+    EvidenceAttestation,
+    EvidenceAttestationRecord,
     EvidenceFreshness,
     EvidenceSpec,
+    build_evidence_attestation,
     capability_evidence,
     evidence,
     evidence_freshness,
+    load_evidence_attestation,
 )
 from .exceptions import GallicaError, GallicaResponseError
 from .models import (
@@ -42,6 +46,8 @@ __all__ = [
     "Document",
     "DocumentMetadata",
     "DublinCoreRecord",
+    "EvidenceAttestation",
+    "EvidenceAttestationRecord",
     "EvidenceFreshness",
     "EvidenceSpec",
     "Gallica",
@@ -53,10 +59,12 @@ __all__ = [
     "ReferenceSpec",
     "SearchResults",
     "__version__",
+    "build_evidence_attestation",
     "capabilities",
     "capability_evidence",
     "evidence",
     "evidence_freshness",
+    "load_evidence_attestation",
     "operational_contract",
     "operational_contracts",
     "programmable_reference",
