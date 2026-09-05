@@ -20,6 +20,9 @@ classifiers = [
 ]
 dependencies = ["httpx>=0.27,<1"]
 
+[project.scripts]
+gallica = "gallica.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/maribakulj/gallica-sdk"
 Source = "https://github.com/maribakulj/gallica-sdk"
