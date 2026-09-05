@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .models import ContentSearchResults, DocumentMetadata
+from .models import ContentSearchItem, ContentSearchResults, DocumentMetadata
 
 if TYPE_CHECKING:
     from .client import Gallica
@@ -33,13 +34,53 @@ class Document:
         page: int | None = None,
         start_result: int | None = None,
     ) -> ContentSearchResults:
-        """Search within OCR and return typed ContentSearch results."""
+        """Search within OCR and return one ContentSearch result page.
+
+        Passing ``page`` asks Gallica for OCR word rectangles relative to the master
+        image dimensions for that one physical view.
+        """
         return self._gallica._content_search(
             self.ark,
             query,
             page=page,
             start_result=start_result,
         )
+
+    def search_text_all(
+        self,
+        query: str,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> Iterator[ContentSearchItem]:
+        """Iterate lazily over ContentSearch results using ``startResult`` pagination.
+
+        The public service returns at most 10 items per request. No request beyond
+        what is needed for ``limit`` is made, and no eager all-results list is built.
+        """
+        if page is not None and page < 1:
+            raise ValueError("page must be >= 1")
+        if limit is not None and limit < 1:
+            raise ValueError("limit must be >= 1 when supplied")
+
+        yielded = 0
+        start_result = 1
+        while True:
+            result_page = self.search_text(
+                query,
+                page=page,
+                start_result=start_result,
+            )
+            if not result_page.items:
+                return
+            for item in result_page.items:
+                yield item
+                yielded += 1
+                if limit is not None and yielded >= limit:
+                    return
+            start_result += len(result_page.items)
+            if start_result > result_page.total:
+                return
 
     def page(self, number: int) -> Page:
         if number < 1:
