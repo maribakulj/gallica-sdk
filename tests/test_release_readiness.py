@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import tomllib
 from importlib.metadata import version
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 from gallica import __version__, programmable_reference
 
 ROOT = Path(__file__).resolve().parents[1]
+FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
 def _project_metadata() -> dict[str, object]:
@@ -42,6 +44,30 @@ def test_package_metadata_matches_current_positioning() -> None:
     assert isinstance(urls, dict)
     assert urls["Source"] == "https://github.com/maribakulj/gallica-sdk"
     assert urls["Issues"] == "https://github.com/maribakulj/gallica-sdk/issues"
+
+
+def test_python_classifiers_cover_tested_versions() -> None:
+    project = _project_metadata()
+    classifiers = project["classifiers"]
+    assert isinstance(classifiers, list)
+    for python_version in ("3.11", "3.12", "3.13", "3.14"):
+        assert f"Programming Language :: Python :: {python_version}" in classifiers
+
+
+def test_all_external_workflow_actions_are_pinned_to_full_sha() -> None:
+    workflows = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
+    assert workflows
+    for workflow in workflows:
+        for raw_line in workflow.read_text(encoding="utf-8").splitlines():
+            stripped = raw_line.strip()
+            if not stripped.startswith("- uses:") and not stripped.startswith("uses:"):
+                continue
+            action = stripped.split("uses:", 1)[1].strip().split()[0]
+            if action.startswith("./"):
+                continue
+            _owner_action, separator, ref = action.rpartition("@")
+            assert separator, f"missing action ref in {workflow}: {action}"
+            assert FULL_SHA.fullmatch(ref), f"unpinned action in {workflow}: {action}"
 
 
 def test_release_blockers_are_explicit_not_implicit() -> None:

@@ -9,7 +9,9 @@
 - [x] live smoke tests against public Gallica services;
 - [x] weekly live-evidence revalidation workflow;
 - [x] CI-generated evidence attestations tied to exact commits and Actions runs;
-- [x] Python 3.11 and 3.12 CI;
+- [x] Python 3.11, 3.12, 3.13 and 3.14 CI on Linux;
+- [x] Windows and macOS corpus/CLI smoke tests on Python 3.14;
+- [x] GitHub Actions upgraded to current maintained majors and pinned to exact commit SHAs;
 - [x] Ruff and mypy strict;
 - [x] wheel and sdist build validation;
 - [x] `twine check` metadata validation;
