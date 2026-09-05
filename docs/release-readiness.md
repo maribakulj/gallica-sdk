@@ -29,14 +29,18 @@
 - [x] user-facing guides for search, documents, periodicals, corpus, quotas, errors and CLI;
 - [x] executable reference notebooks validated in CI;
 - [x] release metadata/tag validator;
-- [x] non-publishing release-candidate workflow retaining validated artifacts.
+- [x] non-publishing release-candidate workflow retaining validated artifacts;
+- [x] desired `main` repository ruleset versioned and tested in `repository-policy/main-ruleset.json`.
 
 ## Blocking the first public release
 
+- [ ] apply the desired repository ruleset or equivalent branch protection to `main` and verify that GitHub enforces it;
 - [ ] choose and add an explicit open-source license;
 - [ ] choose the first public version/tag policy and remove the `.dev0` suffix for the release commit;
 - [ ] configure protected PyPI credentials or Trusted Publishing and add the final publish boundary;
 - [ ] validate the final release artifact through TestPyPI or an equivalent isolated publication path.
+
+The checked-in governance manifest is not itself protection. GitHub must report an active rule on `main`; otherwise a direct push can still bypass the CI gates. See [`repository-governance.md`](repository-governance.md) and issue #25.
 
 ## Important non-blockers
 
