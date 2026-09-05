@@ -5,6 +5,7 @@ import json
 import os
 from collections.abc import Iterable, Iterator
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
 CorpusStatus = Literal["success", "error", "skipped"]
 ArtifactKind = Literal["metadata", "text", "alto", "image"]
 _ARTIFACT_CONTRACT_VERSION = 1
+_MANIFEST_VERSION = 2
 _RETRYABLE_HTTP_STATUSES = {429, 500, 502, 503, 504}
 
 
@@ -39,9 +41,12 @@ class CorpusArtifactFailure:
 
     kind: ArtifactKind
     path: str
+    fingerprint: str
+    parameters: dict[str, object]
     error_type: str
     message: str
     retryable: bool
+    sdk_version: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,8 +159,12 @@ class Corpus:
     @staticmethod
     def _append_manifest(path: Path, item: CorpusItemResult) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
+        payload = asdict(item)
+        payload["_manifest_version"] = _MANIFEST_VERSION
+        payload["_sdk_version"] = __version__
+        payload["_written_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         with path.open("a", encoding="utf-8") as stream:
-            stream.write(json.dumps(asdict(item), ensure_ascii=False, sort_keys=True))
+            stream.write(json.dumps(payload, ensure_ascii=False, sort_keys=True))
             stream.write("\n")
 
     @staticmethod
@@ -289,9 +298,12 @@ class Corpus:
         return CorpusArtifactFailure(
             kind=request.kind,
             path=request.relative_path,
+            fingerprint=request.fingerprint,
+            parameters=request.parameters,
             error_type=type(exc).__name__,
             message=str(exc),
             retryable=retryable,
+            sdk_version=__version__,
         )
 
     @staticmethod
@@ -306,7 +318,6 @@ class Corpus:
         from .document import Document
 
         if not isinstance(doc, Document):
-            # Test doubles intentionally use duck typing; production always supplies Document.
             typed_doc = cast("Document", doc)
         else:
             typed_doc = doc
