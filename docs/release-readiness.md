@@ -10,22 +10,27 @@
 - [x] Python 3.11 and 3.12 CI;
 - [x] Ruff and mypy strict;
 - [x] wheel and sdist build validation;
-- [x] wheel reinstall smoke check;
+- [x] `twine check` metadata validation;
+- [x] isolated wheel installation and `pip check`;
+- [x] isolated sdist installation and `pip check`;
 - [x] resumable corpus workflow;
 - [x] machine-readable capability contracts;
+- [x] resolved operational contracts for agents;
 - [x] programmable reference and JSON Schema;
 - [x] validation evidence graph with dated CI provenance;
 - [x] project changelog;
 - [x] package metadata URLs and classifiers;
 - [x] user-facing guides for search, documents, periodicals, corpus, quotas and errors;
-- [x] executable reference notebooks validated in CI.
+- [x] executable reference notebooks validated in CI;
+- [x] release metadata/tag validator;
+- [x] non-publishing release-candidate workflow retaining validated artifacts.
 
 ## Blocking the first public release
 
 - [ ] choose and add an explicit open-source license;
 - [ ] choose the first public version/tag policy and remove the `.dev0` suffix for the release commit;
-- [ ] create a release workflow with protected publishing credentials or trusted publishing;
-- [ ] validate the final artifact on TestPyPI or an equivalent isolated installation path.
+- [ ] configure protected PyPI credentials or Trusted Publishing and add the final publish boundary;
+- [ ] validate the final release artifact through TestPyPI or an equivalent isolated publication path.
 
 ## Important non-blockers
 
@@ -44,3 +49,5 @@ A missing feature is not a release blocker when the project documents it accurat
 ## Release principle
 
 The first release should be small enough that every network-facing capability remains tied to a maintained live test. Publishing more endpoints simply to increase feature count would weaken the main property of the project: a capability is advertised only when its operational behavior has been observed and validated.
+
+Detailed procedure: [`releasing.md`](releasing.md).

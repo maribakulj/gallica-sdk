@@ -22,6 +22,10 @@ The project follows semantic versioning once a first public release is published
 - user guides for search, documents/pages, periodicals, corpus, quotas and error behavior;
 - executable notebooks for search/metadata and resumable corpus workflows;
 - CI execution of the reference notebooks against public Gallica services;
+- release metadata/tag validator;
+- non-publishing release-candidate workflow that validates and retains wheel/sdist artifacts;
+- isolated wheel and sdist installation checks with `pip check`;
+- `twine check` validation for built distributions;
 - CI for Python 3.11 and 3.12, Ruff, mypy strict, wheel/sdist packaging and public Gallica smoke tests.
 
 ### Changed
@@ -29,10 +33,12 @@ The project follows semantic versioning once a first public release is published
 - project positioning expanded from a Python-only SDK to a verified programmable reference plus Python SDK;
 - package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;
 - programmable reference schema advanced to 2.0 to advertise the operational-contract export;
-- README is now a navigable entry point to task-focused documentation rather than the only user guide.
+- README is now a navigable entry point to task-focused documentation rather than the only user guide;
+- package CI now validates both wheel and source-distribution installation paths.
 
 ### Known limitations
 
 - automated PDF access is intentionally unsupported until a reproducible public contract is validated;
 - page-level corpus downloads require explicit views and never imply all pages;
-- no CLI, MCP, async public API, Parquet/DataFrame export or implicit high-volume concurrency is provided yet.
+- no CLI, MCP, async public API, Parquet/DataFrame export or implicit high-volume concurrency is provided yet;
+- PyPI publication remains intentionally disabled until license, version policy and publishing trust configuration are decided.
