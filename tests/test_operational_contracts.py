@@ -4,7 +4,12 @@ import json
 
 import pytest
 
-from gallica import capabilities, operational_contract, operational_contracts
+from gallica import (
+    build_evidence_attestation,
+    capabilities,
+    operational_contract,
+    operational_contracts,
+)
 
 
 def test_operational_contracts_cover_every_capability_once() -> None:
@@ -26,12 +31,23 @@ def test_every_contract_has_output_and_error_semantics() -> None:
         assert isinstance(contract["freshness"], tuple)
 
 
-def test_network_contracts_resolve_services_and_live_evidence() -> None:
+def test_network_contracts_are_unknown_without_current_attestation() -> None:
     for contract in operational_contracts():
         if not contract["services"]:
             continue
         assert any(item["kind"] == "live-test" for item in contract["evidence"]), contract["id"]
-        assert any(item["state"] in {"fresh", "stale"} for item in contract["freshness"]), contract["id"]
+        assert any(item["state"] == "unknown" for item in contract["freshness"]), contract["id"]
+
+
+def test_attestation_resolves_current_operational_freshness() -> None:
+    attestation = build_evidence_attestation(
+        commit="b" * 40,
+        run_url="https://github.com/example/repo/actions/runs/99",
+        observed_at="2026-09-05T10:00:00Z",
+    )
+    contract = operational_contract("page_alto", attestation=attestation)
+    assert contract["freshness"]
+    assert all(item["state"] == "fresh" for item in contract["freshness"])
 
 
 def test_resolved_page_alto_contract_is_self_contained() -> None:

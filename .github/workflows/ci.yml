@@ -78,3 +78,12 @@ jobs:
           cache: pip
       - run: python -m pip install -e '.[dev]'
       - run: pytest -m live tests/test_live.py tests/test_live_usability.py
+      - name: Generate evidence attestation
+        run: python scripts/generate_evidence_attestation.py
+      - name: Upload evidence attestation
+        uses: actions/upload-artifact@v4
+        with:
+          name: gallica-evidence-attestation-${{ github.sha }}
+          path: evidence-attestation.json
+          if-no-files-found: error
+          retention-days: 30
