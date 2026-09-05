@@ -20,6 +20,7 @@ The project follows semantic versioning once a first public release is published
 - resolved operational contracts combining signature, output semantics, expected errors, services, evidence and freshness;
 - `operational_contract()` and `operational_contracts()` plus JSON export support;
 - JSON-first `gallica` CLI for reference/capability inspection, SRU search, metadata and page counts;
+- PEP 561 `py.typed` marker for downstream type checkers;
 - user guides for search, documents/pages, periodicals, corpus, quotas, errors and CLI usage;
 - executable notebooks for search/metadata and resumable corpus workflows;
 - CI execution of the reference notebooks against public Gallica services;
@@ -27,6 +28,7 @@ The project follows semantic versioning once a first public release is published
 - non-publishing release-candidate workflow that validates and retains wheel/sdist artifacts;
 - isolated wheel and sdist installation checks with `pip check`;
 - installed CLI smoke checks from both wheel and sdist;
+- installed `py.typed` verification from both wheel and sdist;
 - `twine check` validation for built distributions;
 - CI for Python 3.11 and 3.12, Ruff, mypy strict, wheel/sdist packaging and public Gallica smoke tests.
 
