@@ -57,11 +57,15 @@ for item in report.failures:
         print(
             failure.kind,
             failure.path,
+            failure.fingerprint,
+            failure.parameters,
             failure.error_type,
             failure.message,
             failure.retryable,
         )
 ```
+
+Chaque échec conserve donc le même fingerprint de requête que celui qui aurait identifié un artefact réussi, ainsi que ses paramètres et la version du SDK. Le manifest JSONL ajoute également `_manifest_version`, `_sdk_version` et `_written_at`. Un échec d'image à 800 px n'est plus historiquement indiscernable d'un échec à 3000 px, prouesse jusque-là réservée aux journaux qui détestent leurs lecteurs.
 
 `report.retryable` renvoie les items en erreur qui contiennent au moins une panne classée comme transitoire. Cette classification est volontairement conservatrice : erreurs de transport `httpx` et statuts HTTP `429`, `500`, `502`, `503`, `504` sont retryables ; une erreur sémantique ou locale n'est pas automatiquement rejouable.
 
