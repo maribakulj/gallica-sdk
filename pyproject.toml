@@ -30,6 +30,7 @@ Issues = "https://github.com/maribakulj/gallica-sdk/issues"
 
 [project.optional-dependencies]
 dev = [
+  "jsonschema>=4.23,<5",
   "pytest>=8,<9",
   "pytest-cov>=5,<7",
   "ruff>=0.6,<1",
