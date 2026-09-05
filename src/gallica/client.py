@@ -29,7 +29,7 @@ def _local_name(tag: str) -> str:
 
 def _looks_like_html(content: bytes) -> bool:
     prefix = content.lstrip()[:64].lower()
-    return prefix.startswith(b"<!doctype html") or prefix.startswith(b"<html")
+    return prefix.startswith((b"<!doctype html", b"<html"))
 
 
 def _reject_html(response: httpx.Response, *, service: str) -> None:
@@ -75,7 +75,18 @@ def _validate_image(response: httpx.Response) -> bytes:
 
 
 def _validate_text(response: httpx.Response) -> str:
-    _reject_html(response, service="plain OCR text")
+    """Validate Gallica's texteBrut representation.
+
+    Despite its name, the public service legitimately returns an HTML document
+    containing OCR text. HTML is therefore not itself an error. Anti-bot challenge
+    responses are rejected using the final URL and challenge-specific markers.
+    """
+    if not response.content.strip():
+        raise GallicaResponseError("plain OCR text response is empty")
+    final_path = response.url.path.lower()
+    prefix = response.content[:16384].lower()
+    if "/altcha" in final_path or b"altcha-widget" in prefix or b"/search/altcha" in prefix:
+        raise GallicaResponseError("plain OCR text request was redirected to an anti-bot challenge")
     return response.text
 
 
@@ -178,14 +189,12 @@ class Gallica:
         response = self._transport.get(
             f"{BASE_URL}/services/Pagination", params={"ark": normalize_ark(ark)}
         )
+        if _looks_like_html(response.content):
+            raise GallicaResponseError("Pagination returned HTML instead of XML")
         try:
             root = ET.fromstring(response.content)
         except ET.ParseError as exc:
             raise GallicaResponseError("Pagination response is not valid XML") from exc
-        if _local_name(root.tag) != "results":
-            raise GallicaResponseError(
-                f"Pagination response has unexpected root {_local_name(root.tag)!r}"
-            )
         for element in root.iter():
             if _local_name(element.tag) == "nbVueImages" and element.text:
                 try:
