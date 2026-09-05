@@ -6,6 +6,7 @@
 
 - [x] typed public Python API;
 - [x] unit and simulated integration tests;
+- [x] deterministic non-live branch coverage gate with an 85% floor;
 - [x] live smoke tests against public Gallica services;
 - [x] weekly live-evidence revalidation workflow;
 - [x] CI-generated evidence attestations tied to exact commits and Actions runs;
@@ -53,5 +54,7 @@ A missing feature is not a release blocker when the project documents it accurat
 ## Release principle
 
 The first release should be small enough that every network-facing capability remains tied to a maintained live test. Publishing more endpoints simply to increase feature count would weaken the main property of the project: a capability is advertised only when its operational behavior has been observed and validated.
+
+The coverage floor is a regression guard, not a target to game. New tests should continue to prove behavior and failure modes; adding trivial lines merely to inflate the percentage would defeat the point with impressive bureaucratic efficiency.
 
 Detailed procedure: [`releasing.md`](releasing.md).

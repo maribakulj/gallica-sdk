@@ -18,6 +18,10 @@ def _project_metadata() -> dict[str, object]:
     return project
 
 
+def _project_config() -> dict[str, object]:
+    return tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+
 def test_distribution_version_is_single_installed_truth() -> None:
     project = _project_metadata()
     assert __version__ == version("gallica-sdk")
@@ -68,6 +72,24 @@ def test_all_external_workflow_actions_are_pinned_to_full_sha() -> None:
             _owner_action, separator, ref = action.rpartition("@")
             assert separator, f"missing action ref in {workflow}: {action}"
             assert FULL_SHA.fullmatch(ref), f"unpinned action in {workflow}: {action}"
+
+
+def test_non_live_coverage_floor_is_enforced_in_ci() -> None:
+    config = _project_config()
+    tool = config["tool"]
+    assert isinstance(tool, dict)
+    coverage = tool["coverage"]
+    assert isinstance(coverage, dict)
+    report = coverage["report"]
+    run = coverage["run"]
+    assert isinstance(report, dict)
+    assert isinstance(run, dict)
+    assert report["fail_under"] >= 85
+    assert run["branch"] is True
+
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "  coverage:\n" in ci
+    assert "pytest -m 'not live' --cov=gallica --cov-report=term-missing" in ci
 
 
 def test_release_blockers_are_explicit_not_implicit() -> None:
