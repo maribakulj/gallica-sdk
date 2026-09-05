@@ -65,13 +65,20 @@ Les vues doivent être des entiers `>= 1`. Elles sont dédupliquées en conserva
 
 La largeur d'image par défaut est 1000 px. Au-delà de 1000 px, les appels passent par le bucket IIIF HD du transport.
 
-## Reprise
+## Reprise vérifiée
 
-Avec `resume=True`, la reprise est fondée sur les fichiers demandés réellement présents sur disque :
+`resume=True` ne considère plus qu'un fichier existant est automatiquement valide. Chaque artefact demandé est associé à un fingerprint de requête et à une preuve d'intégrité enregistrée dans le manifest.
 
-- tous les artefacts existent : statut `skipped`, aucun nouvel appel ;
-- certains artefacts existent : seuls les fichiers manquants sont récupérés ;
-- aucun artefact n'existe : exécution normale.
+Pour être réutilisé, un artefact doit satisfaire simultanément :
+
+- le même type de ressource et les mêmes paramètres de requête ;
+- le même fingerprint de contrat ;
+- la même taille en octets ;
+- le même SHA-256 que lors de son écriture validée.
+
+Par exemple, une image récupérée avec `image_width=800` n'est pas réutilisée si une exécution ultérieure demande `image_width=1000`, même si `image.jpg` existe encore au même chemin. Un fichier modifié ou tronqué est également récupéré à nouveau.
+
+Un ancien `manifest.jsonl` ne contenant pas ces informations de provenance est traité comme non fiable pour la reprise : les artefacts sont régénérés avant d'être enregistrés dans le nouveau format.
 
 Les fichiers texte et binaires sont d'abord écrits dans un fichier temporaire dans le même répertoire, puis remplacés atomiquement avec `os.replace`. Un fichier final n'est donc pas créé avant la fin de son écriture.
 
@@ -83,25 +90,31 @@ Chaque tentative réellement exécutée ajoute une ligne à :
 manifest.jsonl
 ```
 
-Exemple conceptuel :
+Chaque ligne conserve les champs de rapport historiques et ajoute `artifacts`, contenant pour chaque ressource validée :
 
 ```json
 {
-  "ark": "bpt6k5738219s",
-  "status": "success",
-  "metadata_path": ".../metadata.json",
-  "text_path": ".../text.txt",
-  "alto_paths": [".../pages/1/alto.xml"],
-  "image_paths": [".../pages/1/image.jpg"],
-  "error": null
+  "kind": "image",
+  "path": "documents/bpt6k5738219s/pages/1/image.jpg",
+  "fingerprint": "...sha256...",
+  "sha256": "...sha256 du contenu...",
+  "size": 123456,
+  "parameters": {
+    "view": 1,
+    "width": 1000,
+    "format": "jpg"
+  },
+  "sdk_version": "0.2.0.dev0"
 }
 ```
+
+Le fingerprint représente la demande logique, pas le contenu. Le SHA-256 représente le contenu réellement écrit. Cette séparation permet de détecter à la fois un changement de paramètres et une corruption du fichier.
 
 Une exécution entièrement `skipped` n'ajoute pas une nouvelle ligne, puisqu'aucune tentative réseau ou écriture n'a eu lieu.
 
 ## Erreurs
 
-Une exception ordinaire sur un ARK produit un `CorpusItemResult(status="error")` et le traitement continue avec l'ARK suivant. Les artefacts déjà terminés pour cet ARK restent valides et sont signalés dans le résultat.
+Une exception ordinaire sur un ARK produit un `CorpusItemResult(status="error")` et le traitement continue avec l'ARK suivant. Seuls les artefacts dont la provenance a été établie pendant l'exécution ou validée à partir du manifest sont signalés comme valides dans le résultat.
 
 `KeyboardInterrupt`, `SystemExit` et les autres exceptions héritant directement de `BaseException` ne sont pas absorbées.
 
@@ -124,8 +137,11 @@ metadata_path
 text_path
 alto_paths
 image_paths
+artifacts
 error
 ```
+
+`artifacts` contient des `CorpusArtifactRecord` avec fingerprint, checksum, taille, paramètres et version du SDK ayant produit l'artefact.
 
 ## Limites actuelles
 
