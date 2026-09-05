@@ -4,15 +4,50 @@ import json
 from datetime import date
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError
+
 from gallica.agent import capabilities
 from gallica.evidence import build_evidence_attestation, evidence_freshness
 from gallica.reference import REFERENCE_SCHEMA_VERSION, programmable_reference
 
 
+def _checked_in_reference() -> dict[str, object]:
+    payload = json.loads(Path("reference/gallica-reference.json").read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return payload
+
+
+def _reference_schema() -> dict[str, object]:
+    payload = json.loads(Path("reference/schema.json").read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return payload
+
+
 def test_checked_in_reference_matches_canonical_python() -> None:
-    checked_in = json.loads(Path("reference/gallica-reference.json").read_text(encoding="utf-8"))
+    checked_in = _checked_in_reference()
     canonical = json.loads(json.dumps(programmable_reference()))
     assert checked_in == canonical
+
+
+def test_checked_in_reference_validates_against_published_schema() -> None:
+    schema = _reference_schema()
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema)
+    errors = sorted(validator.iter_errors(_checked_in_reference()), key=lambda item: list(item.path))
+    assert errors == []
+
+
+def test_schema_rejects_an_invalid_service_status() -> None:
+    payload = _checked_in_reference()
+    services = payload["services"]
+    assert isinstance(services, list)
+    first = services[0]
+    assert isinstance(first, dict)
+    first["status"] = "looks-fine-to-me"
+    validator = Draft202012Validator(_reference_schema())
+    errors = list(validator.iter_errors(payload))
+    assert any(isinstance(error, ValidationError) for error in errors)
 
 
 def test_reference_indexes_every_capability_exactly_once() -> None:
@@ -82,8 +117,14 @@ def test_ci_attestation_drives_freshness_without_rewriting_declarations() -> Non
         run_url="https://github.com/example/repo/actions/runs/42",
         observed_at="2026-09-05T10:00:00Z",
     )
-    fresh = {item["id"]: item for item in evidence_freshness(attestation=attestation, as_of=date(2026, 9, 10))}
-    stale = {item["id"]: item for item in evidence_freshness(attestation=attestation, as_of=date(2026, 10, 1))}
+    fresh = {
+        item["id"]: item
+        for item in evidence_freshness(attestation=attestation, as_of=date(2026, 9, 10))
+    }
+    stale = {
+        item["id"]: item
+        for item in evidence_freshness(attestation=attestation, as_of=date(2026, 10, 1))
+    }
     assert fresh["live.vertical_slice"]["state"] == "fresh"
     assert fresh["live.vertical_slice"]["age_days"] == 5
     assert fresh["live.vertical_slice"]["observed_at"] == "2026-09-05T10:00:00Z"
@@ -106,8 +147,12 @@ def test_reference_schema_version_is_v2_0() -> None:
     reference = programmable_reference()
     assert reference["operational_contracts_export"] == "python scripts/export_operational_contracts.py"
 
-    schema = json.loads(Path("reference/schema.json").read_text(encoding="utf-8"))
-    assert schema["properties"]["id"]["const"] == "gallica-sdk-reference"
-    assert "operational_contracts_export" in schema["required"]
-    assert "observed_at" in schema["properties"]["evidence"]["items"]["properties"]
-    assert "freshness_days" in schema["properties"]["evidence"]["items"]["properties"]
+    schema = _reference_schema()
+    properties = schema["properties"]
+    required = schema["required"]
+    assert isinstance(properties, dict)
+    assert isinstance(required, list)
+    assert properties["id"]["const"] == "gallica-sdk-reference"
+    assert "operational_contracts_export" in required
+    assert "observed_at" in properties["evidence"]["items"]["properties"]
+    assert "freshness_days" in properties["evidence"]["items"]["properties"]
