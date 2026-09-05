@@ -8,7 +8,7 @@ Cette règle est importante : une absence de donnée et une panne réseau ne son
 
 ## Réponses HTTP 200 invalides
 
-Gallica peut théoriquement répondre `HTTP 200` avec un contenu qui ne correspond pas à la ressource demandée. `gallica-sdk` vérifie désormais plusieurs contrats de contenu avant d'accepter la réponse.
+Gallica peut répondre `HTTP 200` avec un contenu qui ne correspond pas à la ressource demandée. `gallica-sdk` vérifie plusieurs contrats de contenu avant d'accepter la réponse.
 
 Les erreurs détectées par cette validation remontent sous forme de :
 
@@ -21,9 +21,15 @@ Exemples :
 - page HTML renvoyée à la place d'un ALTO ;
 - XML ALTO avec une racine inattendue ;
 - page HTML renvoyée à la place d'une image IIIF ;
-- `.texteBrut` qui répond avec du HTML ;
 - SRU/OAIRecord/ContentSearch avec une structure XML incompatible ;
-- `info.json` IIIF sans dimensions valides.
+- `info.json` IIIF sans dimensions valides ;
+- requête `.texteBrut` redirigée vers un challenge anti-bot Gallica.
+
+### Particularité de `.texteBrut`
+
+Le nom du qualifier est trompeur : le service public `.texteBrut` peut légitimement servir un document HTML contenant l'en-tête bibliographique et le texte OCR. Le SDK n'interprète donc pas `text/html` comme une erreur pour cette primitive.
+
+Il distingue en revanche cette représentation légitime d'un challenge anti-bot identifié par l'URL finale ou des marqueurs spécifiques au challenge. Cette règle est volontairement spécifique à `.texteBrut` : pour ALTO ou une image IIIF, une page HTML reste une réponse invalide.
 
 `GallicaResponseError` hérite de `GallicaError`. Cette première taxonomie reste volontairement petite ; elle distingue déjà une réponse externe sémantiquement invalide d'une simple absence de donnée.
 
