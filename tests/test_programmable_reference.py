@@ -27,8 +27,16 @@ def test_service_ids_are_unique_and_statuses_explicit() -> None:
     services = programmable_reference()["services"]
     ids = [service["id"] for service in services]
     assert len(ids) == len(set(ids))
-    assert {service["status"] for service in services} <= {"live-validated", "not-supported"}
+    assert {service["status"] for service in services} <= {
+        "live-validated",
+        "environment-limited",
+        "not-supported",
+    }
     assert any(service["id"] == "pdf" and service["status"] == "not-supported" for service in services)
+    assert any(
+        service["id"] == "text" and service["status"] == "environment-limited"
+        for service in services
+    )
 
 
 def test_evidence_graph_resolves_all_references() -> None:
@@ -48,8 +56,14 @@ def test_evidence_graph_resolves_all_references() -> None:
 
 def test_live_validated_network_capabilities_have_live_evidence() -> None:
     reference = programmable_reference()
-    live_ids = {item["id"] for item in reference["evidence"] if item["kind"] == "live-test" and item["status"] == "passing-in-ci"}
-    network_service_ids = {item["id"] for item in reference["services"] if item["status"] == "live-validated"}
+    live_ids = {
+        item["id"]
+        for item in reference["evidence"]
+        if item["kind"] == "live-test" and item["status"] == "passing-in-ci"
+    }
+    network_service_ids = {
+        item["id"] for item in reference["services"] if item["status"] == "live-validated"
+    }
     for item in reference["capability_evidence"]:
         if set(item["services"]) & network_service_ids:
             assert set(item["evidence"]) & live_ids, item["capability"]
