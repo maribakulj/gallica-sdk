@@ -8,6 +8,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
+import httpx
+
 from ._version import __version__
 from .ark import normalize_ark
 
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
 CorpusStatus = Literal["success", "error", "skipped"]
 ArtifactKind = Literal["metadata", "text", "alto", "image"]
 _ARTIFACT_CONTRACT_VERSION = 1
+_RETRYABLE_HTTP_STATUSES = {429, 500, 502, 503, 504}
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +34,17 @@ class CorpusArtifactRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class CorpusArtifactFailure:
+    """Structured failure for one requested corpus artifact."""
+
+    kind: ArtifactKind
+    path: str
+    error_type: str
+    message: str
+    retryable: bool
+
+
+@dataclass(frozen=True, slots=True)
 class CorpusItemResult:
     ark: str
     status: CorpusStatus
@@ -39,7 +53,13 @@ class CorpusItemResult:
     alto_paths: tuple[str, ...] = ()
     image_paths: tuple[str, ...] = ()
     artifacts: tuple[CorpusArtifactRecord, ...] = ()
+    failure_details: tuple[CorpusArtifactFailure, ...] = ()
     error: str | None = None
+
+    @property
+    def retryable(self) -> bool:
+        """Whether at least one failed artifact may succeed on a later retry."""
+        return any(failure.retryable for failure in self.failure_details)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +82,11 @@ class CorpusReport:
     def skipped(self) -> tuple[CorpusItemResult, ...]:
         return tuple(item for item in self.items if item.status == "skipped")
 
+    @property
+    def retryable(self) -> tuple[CorpusItemResult, ...]:
+        """Failed items containing at least one retryable artifact failure."""
+        return tuple(item for item in self.failures if item.retryable)
+
 
 @dataclass(frozen=True, slots=True)
 class _ArtifactRequest:
@@ -77,6 +102,8 @@ class Corpus:
 
     Corpus stays synchronous and delegates every network operation to normal SDK
     primitives so central throttling and retry policies remain authoritative.
+    Failures are isolated per requested artifact so one bad response does not hide
+    independent artifacts that can still be retrieved for the same ARK.
     """
 
     def __init__(self, gallica: Gallica, arks: Iterable[str]) -> None:
@@ -254,6 +281,50 @@ class Corpus:
             if request.kind == kind and request.relative_path in records
         )
 
+    @staticmethod
+    def _failure_for(request: _ArtifactRequest, exc: Exception) -> CorpusArtifactFailure:
+        retryable = isinstance(exc, httpx.TransportError)
+        if isinstance(exc, httpx.HTTPStatusError):
+            retryable = exc.response.status_code in _RETRYABLE_HTTP_STATUSES
+        return CorpusArtifactFailure(
+            kind=request.kind,
+            path=request.relative_path,
+            error_type=type(exc).__name__,
+            message=str(exc),
+            retryable=retryable,
+        )
+
+    @staticmethod
+    def _error_summary(failures: list[CorpusArtifactFailure]) -> str | None:
+        if not failures:
+            return None
+        return "; ".join(
+            f"{failure.kind}: {failure.error_type}: {failure.message}" for failure in failures
+        )
+
+    def _fetch_artifact(self, request: _ArtifactRequest, doc: object) -> None:
+        from .document import Document
+
+        if not isinstance(doc, Document):
+            # Test doubles intentionally use duck typing; production always supplies Document.
+            typed_doc = cast("Document", doc)
+        else:
+            typed_doc = doc
+        if request.kind == "metadata":
+            self._write_atomic(request.path, self._metadata_json(typed_doc.metadata()))
+        elif request.kind == "text":
+            self._write_atomic(request.path, typed_doc.text())
+        elif request.kind == "alto":
+            view = int(cast(int | str, request.parameters["view"]))
+            self._write_atomic_bytes(request.path, typed_doc.page(view).alto())
+        else:
+            view = int(cast(int | str, request.parameters["view"]))
+            width = int(cast(int | str, request.parameters["width"]))
+            self._write_atomic_bytes(
+                request.path,
+                typed_doc.page(view).image(width=width, fmt="jpg"),
+            )
+
     def fetch(
         self,
         output: str | Path,
@@ -270,7 +341,8 @@ class Corpus:
 
         Page-level ALTO and images require explicit ``views``. Resume only reuses
         artifacts whose request fingerprint, byte size and SHA-256 checksum match
-        the latest provenance recorded in ``manifest.jsonl``.
+        provenance recorded in ``manifest.jsonl``. Individual artifact failures do
+        not prevent independent requested artifacts for the same ARK from running.
         """
         normalized_views = self._normalize_views(views)
         if not metadata and not text and not alto and not images:
@@ -349,59 +421,40 @@ class Corpus:
                 )
                 continue
 
-            try:
-                doc = self._gallica.document(ark)
-                for request in requests:
-                    if request.relative_path in current:
-                        continue
-                    if request.kind == "metadata":
-                        self._write_atomic(request.path, self._metadata_json(doc.metadata()))
-                    elif request.kind == "text":
-                        self._write_atomic(request.path, doc.text())
-                    elif request.kind == "alto":
-                        view = int(cast(int | str, request.parameters["view"]))
-                        self._write_atomic_bytes(request.path, doc.page(view).alto())
-                    else:
-                        view = int(cast(int | str, request.parameters["view"]))
-                        width = int(cast(int | str, request.parameters["width"]))
-                        self._write_atomic_bytes(
-                            request.path,
-                            doc.page(view).image(width=width, fmt="jpg"),
-                        )
+            doc = self._gallica.document(ark)
+            failure_details: list[CorpusArtifactFailure] = []
+            for request in requests:
+                if request.relative_path in current:
+                    continue
+                try:
+                    self._fetch_artifact(request, doc)
                     current[request.relative_path] = self._record_for(request)
+                except Exception as exc:  # noqa: BLE001 - per-artifact isolation is the contract
+                    failure_details.append(self._failure_for(request, exc))
 
-                item = CorpusItemResult(
-                    ark=ark,
-                    status="success",
-                    metadata_path=str(metadata_request.path) if metadata_request else None,
-                    text_path=str(text_request.path) if text_request else None,
-                    alto_paths=self._paths_for_kind(requests, current, "alto"),
-                    image_paths=self._paths_for_kind(requests, current, "image"),
-                    artifacts=tuple(current[item.relative_path] for item in requests),
-                )
-            except Exception as exc:  # noqa: BLE001 - per-item failure isolation is the contract
-                item = CorpusItemResult(
-                    ark=ark,
-                    status="error",
-                    metadata_path=(
-                        str(metadata_request.path)
-                        if metadata_request and metadata_request.relative_path in current
-                        else None
-                    ),
-                    text_path=(
-                        str(text_request.path)
-                        if text_request and text_request.relative_path in current
-                        else None
-                    ),
-                    alto_paths=self._paths_for_kind(requests, current, "alto"),
-                    image_paths=self._paths_for_kind(requests, current, "image"),
-                    artifacts=tuple(
-                        current[item.relative_path]
-                        for item in requests
-                        if item.relative_path in current
-                    ),
-                    error=f"{type(exc).__name__}: {exc}",
-                )
+            item = CorpusItemResult(
+                ark=ark,
+                status="error" if failure_details else "success",
+                metadata_path=(
+                    str(metadata_request.path)
+                    if metadata_request and metadata_request.relative_path in current
+                    else None
+                ),
+                text_path=(
+                    str(text_request.path)
+                    if text_request and text_request.relative_path in current
+                    else None
+                ),
+                alto_paths=self._paths_for_kind(requests, current, "alto"),
+                image_paths=self._paths_for_kind(requests, current, "image"),
+                artifacts=tuple(
+                    current[request.relative_path]
+                    for request in requests
+                    if request.relative_path in current
+                ),
+                failure_details=tuple(failure_details),
+                error=self._error_summary(failure_details),
+            )
             self._append_manifest(manifest, item)
             for record in item.artifacts:
                 known_artifacts[record.path] = record

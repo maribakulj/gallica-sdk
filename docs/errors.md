@@ -44,14 +44,26 @@ Le SDK valide les contraintes qu'il connaît avant de lancer certaines requêtes
 
 ## Corpus
 
-`Corpus.fetch()` isole les erreurs ordinaires par ARK. Une erreur sur un document est enregistrée dans le rapport et le traitement continue sur les suivants.
+`Corpus.fetch()` isole les erreurs au niveau de chaque artefact demandé. L'échec d'une métadonnée n'empêche donc pas, à lui seul, la récupération du texte, d'un ALTO ou d'une image pour le même ARK. Les artefacts réussis sont conservés dans le manifest et peuvent être réutilisés lors d'un `resume` ultérieur.
+
+La compatibilité avec le rapport historique est conservée : `report.failures` renvoie toujours les items en erreur et `item.error` reste une chaîne de synthèse. Pour un traitement fiable, utilisez les détails structurés :
 
 ```python
-report = corpus.fetch("./corpus", metadata=True, resume=True)
+report = corpus.fetch("./corpus", metadata=True, text=True, resume=True)
 
-for failure in report.failures:
-    print(failure.ark, failure.error)
+for item in report.failures:
+    print(item.ark, item.retryable)
+    for failure in item.failure_details:
+        print(
+            failure.kind,
+            failure.path,
+            failure.error_type,
+            failure.message,
+            failure.retryable,
+        )
 ```
+
+`report.retryable` renvoie les items en erreur qui contiennent au moins une panne classée comme transitoire. Cette classification est volontairement conservatrice : erreurs de transport `httpx` et statuts HTTP `429`, `500`, `502`, `503`, `504` sont retryables ; une erreur sémantique ou locale n'est pas automatiquement rejouable.
 
 Les interruptions système ne sont pas absorbées. Le manifest, les écritures atomiques et les checksums permettent ensuite de reprendre le traitement sans approuver automatiquement un fichier présent sur disque.
 
