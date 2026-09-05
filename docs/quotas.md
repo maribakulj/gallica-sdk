@@ -20,7 +20,9 @@ Le transport réessaie de manière bornée les statuts :
 429, 500, 502, 503, 504
 ```
 
-`Retry-After` est respecté lorsqu'il est exploitable ; sinon un backoff borné est appliqué.
+Il réessaie également les erreurs de transport transitoires remontées par `httpx` (par exemple timeout ou coupure de connexion), toujours dans la limite du budget de retries configuré. Une erreur réseau encore présente après épuisement de ce budget remonte au code appelant.
+
+`Retry-After` est respecté sous ses deux formes HTTP usuelles : nombre de secondes ou date HTTP. Lorsqu'il est absent ou inexploitable, un backoff exponentiel borné est utilisé.
 
 ## Ce que le SDK ne fait pas
 
@@ -36,6 +38,12 @@ page.image(width=1000)
 ```
 
 1000 px est la valeur par défaut. Une largeur supérieure est classée dans le bucket HD par le SDK.
+
+## Validation des réponses
+
+Un statut HTTP 200 n'est pas considéré comme une preuve suffisante de succès. Les primitives qui récupèrent ALTO, image IIIF ou texte OCR vérifient que le contenu reçu correspond au type attendu et rejettent notamment une page HTML servie avec HTTP 200.
+
+Les réponses structurées principales vérifient aussi leur structure minimale avant d'être transformées en modèles Python.
 
 ## Corpus
 
