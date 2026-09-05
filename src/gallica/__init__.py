@@ -24,6 +24,7 @@ from .evidence import (
 from .exceptions import GallicaError, GallicaResponseError
 from .models import (
     ContentSearchItem,
+    ContentSearchMatch,
     ContentSearchResults,
     DocumentMetadata,
     DublinCoreRecord,
@@ -37,6 +38,7 @@ __all__ = [
     "CapabilityEvidence",
     "CapabilitySpec",
     "ContentSearchItem",
+    "ContentSearchMatch",
     "ContentSearchResults",
     "Corpus",
     "CorpusArtifactFailure",

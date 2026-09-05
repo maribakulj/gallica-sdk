@@ -57,6 +57,22 @@ def test_public_gallica_phase1_document_access() -> None:
         assert search.items[0].content_html is not None
         assert "results" in search.raw_xml.lower()
 
+        geometry = text_doc.search_text("hugo", page=173)
+        assert geometry.total == 1
+        assert len(geometry.items) == 1
+        geometry_item = geometry.items[0]
+        assert geometry_item.page_id == "PAG_173"
+        assert geometry_item.page_width == 1153
+        assert geometry_item.page_height == 2138
+        assert geometry_item.matches
+        assert geometry_item.matches[0].alto_id
+        assert geometry_item.matches[0].width > 0
+        assert geometry_item.matches[0].height > 0
+
+        lazy_items = list(text_doc.search_text_all("hugo", limit=3))
+        assert len(lazy_items) == 3
+        assert all(item.page_id is not None for item in lazy_items)
+
         issue = gallica.periodical("cb32798952c").issue(date(1937, 3, 25))
         assert issue is not None
         assert issue.ark == "bpt6k5509212w"

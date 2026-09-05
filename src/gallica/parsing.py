@@ -6,6 +6,7 @@ from collections import defaultdict
 from .exceptions import GallicaResponseError
 from .models import (
     ContentSearchItem,
+    ContentSearchMatch,
     ContentSearchResults,
     DocumentMetadata,
     DublinCoreRecord,
@@ -90,6 +91,54 @@ def parse_oai_record(xml: str, *, ark: str) -> DocumentMetadata:
     )
 
 
+def _optional_int_text(element: ET.Element | None, *, field: str) -> int | None:
+    if element is None or element.text is None or not element.text.strip():
+        return None
+    try:
+        return int(element.text.strip())
+    except ValueError as exc:
+        raise GallicaResponseError(f"ContentSearch {field} is not an integer") from exc
+
+
+def _required_int_attr(element: ET.Element, name: str) -> int:
+    raw = element.attrib.get(name)
+    if raw is None:
+        raise GallicaResponseError(f"ContentSearch altoidstring lacks {name}")
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise GallicaResponseError(
+            f"ContentSearch altoidstring {name} is not an integer"
+        ) from exc
+
+
+def _content_search_matches(item: ET.Element) -> tuple[ContentSearchMatch, ...]:
+    matches: list[ContentSearchMatch] = []
+    for element in item.iter():
+        if _local_name(element.tag) != "altoidstring":
+            continue
+        alto_id = (element.text or "").strip()
+        if not alto_id:
+            raise GallicaResponseError("ContentSearch altoidstring lacks an OCR identifier")
+        matches.append(
+            ContentSearchMatch(
+                alto_id=alto_id,
+                hpos=_required_int_attr(element, "hpos"),
+                vpos=_required_int_attr(element, "vpos"),
+                width=_required_int_attr(element, "width"),
+                height=_required_int_attr(element, "height"),
+            )
+        )
+    return tuple(matches)
+
+
+def _legacy_alto_id(element: ET.Element | None) -> str | None:
+    if element is None or element.text is None:
+        return None
+    value = element.text.strip()
+    return value or None
+
+
 def parse_content_search(xml: str, *, fallback_query: str) -> ContentSearchResults:
     root = _parse_xml(xml, expected_root="results")
     total_raw = root.attrib.get("countResults", "0")
@@ -107,20 +156,35 @@ def parse_content_search(xml: str, *, fallback_query: str) -> ContentSearchResul
     for element in root.iter():
         if _local_name(element.tag) != "item":
             continue
-        children = {_local_name(child.tag): child.text for child in element}
+        direct_children = {_local_name(child.tag): child for child in element}
+        matches = _content_search_matches(element)
         score: float | None = None
         raw_score = element.attrib.get("score")
         if raw_score:
             try:
                 score = float(raw_score)
-            except ValueError:
-                pass
+            except ValueError as exc:
+                raise GallicaResponseError("ContentSearch score is not numeric") from exc
+        page_id_element = direct_children.get("p_id")
+        content_element = direct_children.get("content")
+        legacy_alto_id = _legacy_alto_id(direct_children.get("altoid"))
         items.append(
             ContentSearchItem(
-                page_id=(children.get("p_id") or None),
-                content_html=(children.get("content") or None),
-                alto_id=(children.get("altoid") or None),
+                page_id=(
+                    page_id_element.text.strip()
+                    if page_id_element is not None and page_id_element.text
+                    else None
+                ),
+                content_html=(
+                    content_element.text
+                    if content_element is not None and content_element.text
+                    else None
+                ),
+                alto_id=matches[0].alto_id if matches else legacy_alto_id,
                 score=score,
+                page_width=_optional_int_text(direct_children.get("p_width"), field="p_width"),
+                page_height=_optional_int_text(direct_children.get("p_height"), field="p_height"),
+                matches=matches,
             )
         )
 

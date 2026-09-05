@@ -8,7 +8,9 @@ Cette matrice décrit le périmètre public actuel du SDK et distingue les capac
 | Métadonnées document | `services/OAIRecord` | ARK | `DocumentMetadata` | Dublin Core répétable + informations techniques Gallica | supportée |
 | Pagination / nombre de vues | `services/Pagination` | ARK | `int` | `nbVueImages` est la source attendue | supportée |
 | Résolution d'un numéro de périodique | `services/Issues` | ARK + date | `Document | None` | `dayOfYear` structuré | supportée |
-| Recherche dans OCR | `services/ContentSearch` | ARK + requête | `ContentSearchResults` | pagination `startResult`, 10 éléments par réponse | supportée |
+| Recherche dans OCR | `services/ContentSearch` | ARK + requête | `ContentSearchResults` | 10 éléments max/réponse ; `startResult` pour paginer | supportée |
+| Géométrie d'occurrence OCR | `services/ContentSearch` | ARK + requête + page | `ContentSearchMatch` | coordonnées dans le repère master `p_width`/`p_height` ; plusieurs occurrences possibles | supportée |
+| Itération recherche OCR | `services/ContentSearch` | ARK + requête | `Iterator[ContentSearchItem]` | lazy ; pas de page-size configurable côté service | supportée |
 | OCR texte brut | `.texteBrut` | ARK / plage de vues | `str` | quota public documenté : 5/min | supportée |
 | OCR ALTO | `RequestDigitalElement` | ARK + vue | `bytes` XML ALTO | vue obligatoire | supportée |
 | Informations IIIF | IIIF `info.json` | ARK + vue | `dict` JSON | endpoint Image distinct de Presentation | supportée |
@@ -37,7 +39,8 @@ Le SDK transforme seulement les structures suffisamment stables pour apporter un
 - SRU devient `SearchResults`, contenant le total et des `DublinCoreRecord` ;
 - les propriétés Dublin Core restent répétables et sont conservées sous forme de tuples ;
 - OAIRecord devient `DocumentMetadata`, avec le Dublin Core, `mode_indexation`, `nqamoyen` lorsqu'ils existent, et le XML original ;
-- ContentSearch devient `ContentSearchResults`, avec `total`, `query`, les items (`p_id`, extrait HTML, `altoid`, score) et le XML original.
+- ContentSearch devient `ContentSearchResults`, avec `total`, `query`, les items (`p_id`, extrait HTML, score), les dimensions master et, lorsque `page` est fourni, toutes les occurrences `ContentSearchMatch` (`alto_id`, `hpos`, `vpos`, `width`, `height`) ;
+- l'ancien `ContentSearchItem.alto_id` reste disponible pour compatibilité et pointe vers la valeur historique directe ou la première occurrence géométrique.
 
 Chaque modèle structuré conserve `raw_xml`.
 
@@ -55,7 +58,8 @@ Le corpus reste synchrone et passe exclusivement par les primitives du SDK. Il n
 
 - `Document.text()` expose `.texteBrut` au niveau document.
 - `Page.text()` demande exactement une vue via `.texteBrut`.
-- `Document.search_text()` expose `ContentSearch` sous forme structurée.
+- `Document.search_text()` expose une page ContentSearch structurée et accepte `page` pour récupérer la géométrie OCR.
+- `Document.search_text_all()` gère `startResult` paresseusement et respecte un `limit` explicite sans précharger tous les résultats.
 - `Gallica.periodical(ark).issue(date)` formalise uniquement la résolution datée déjà portée par `Issues`; le résultat est un `Document` normal.
 
 ## PDF : résultat de la validation

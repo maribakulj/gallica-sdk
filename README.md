@@ -60,9 +60,16 @@ Les champs Dublin Core restent répétables et le XML source est conservé dans 
 
 ```python
 with Gallica() as gallica:
-    document = gallica.document("bpt6k5738219s")
+    document = gallica.document("bpt6k5460422k")
     text = document.text()
     matches = document.search_text("hugo")
+
+    for item in document.search_text_all("hugo", limit=25):
+        print(item.page_id)
+
+    geometry = document.search_text("hugo", page=173)
+    for match in geometry.items[0].matches:
+        print(match.hpos, match.vpos, match.width, match.height)
 
     page = document.page(3)
     alto = page.alto()
@@ -70,7 +77,7 @@ with Gallica() as gallica:
     image = page.image(width=1000)
 ```
 
-Guide : [`docs/documents.md`](docs/documents.md).
+`ContentSearch` conserve les extraits HTML, les dimensions master et toutes les boîtes OCR retournées pour une vue. Guide : [`docs/documents.md`](docs/documents.md).
 
 ## Périodiques
 
@@ -240,10 +247,12 @@ Gallica.periodical() -> Periodical
 Gallica.corpus() -> Corpus
 SearchResults.arks -> tuple[str, ...]
 SearchResults.write_jsonl() -> Path
+ContentSearchMatch -> OCR rectangle
 Document.metadata() -> DocumentMetadata
 Document.page_count() -> int
 Document.text() -> str
 Document.search_text() -> ContentSearchResults
+Document.search_text_all() -> Iterator[ContentSearchItem]
 Document.page() -> Page
 Page.text() -> str
 Page.alto() -> bytes
@@ -266,7 +275,7 @@ pytest -m live tests/test_live.py tests/test_live_usability.py
 python scripts/execute_notebooks.py
 ```
 
-La CI exécute Python 3.11 et 3.12, Ruff, mypy strict, tests déterministes, validation JSON Schema, wheel/sdist avec réinstallation, smoke tests Gallica publics, attestations de preuve et notebooks de référence. Le workflow `Live evidence` relance les tests publics chaque semaine.
+La CI exécute Python 3.11, 3.12, 3.13 et 3.14, Ruff, mypy strict, tests déterministes, validation JSON Schema, wheel/sdist avec réinstallation, smoke tests Windows/macOS, smoke tests Gallica publics, attestations de preuve et notebooks de référence. Le workflow `Live evidence` relance les tests publics chaque semaine.
 
 ## Documentation
 
