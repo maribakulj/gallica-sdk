@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Self
 
 import pytest
 
@@ -59,7 +60,7 @@ def test_network_commands_delegate_to_sdk(monkeypatch: pytest.MonkeyPatch, capsy
             return 12
 
     class FakeGallica:
-        def __enter__(self) -> "FakeGallica":
+        def __enter__(self) -> Self:
             return self
 
         def __exit__(self, *args: object) -> None:
