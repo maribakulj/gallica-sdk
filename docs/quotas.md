@@ -41,9 +41,9 @@ page.image(width=1000)
 
 ## Validation des réponses
 
-Un statut HTTP 200 n'est pas considéré comme une preuve suffisante de succès. Les primitives qui récupèrent ALTO, image IIIF ou texte OCR vérifient que le contenu reçu correspond au type attendu et rejettent notamment une page HTML servie avec HTTP 200.
+Un statut HTTP 200 n'est pas considéré comme une preuve suffisante de succès. La validation est spécifique à chaque service : ALTO doit être du XML ALTO, une image IIIF doit être une image et les réponses structurées principales doivent présenter leur structure minimale attendue.
 
-Les réponses structurées principales vérifient aussi leur structure minimale avant d'être transformées en modèles Python.
+`.texteBrut` constitue une exception importante : malgré son nom, sa représentation publique peut légitimement être HTML. Le SDK accepte cette représentation mais rejette explicitement le challenge anti-bot vers lequel les runners publics froids sont actuellement susceptibles d'être redirigés. Le service est donc déclaré `environment-limited` dans la référence programmable plutôt que `live-validated`.
 
 ## Corpus
 
