@@ -107,10 +107,11 @@ class Pagination:
 
 @dataclass(frozen=True, slots=True)
 class TocDocument:
-    """Gallica TOC payload, explicitly distinguishing legacy HTML and TEI XML."""
+    """Gallica TOC payload preserving the upstream HTML or TEI representation."""
 
     format: Literal["html", "tei"]
     raw: str
+    well_formed: bool
 
 
 @dataclass(frozen=True, slots=True)
