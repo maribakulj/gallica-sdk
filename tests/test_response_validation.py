@@ -36,11 +36,7 @@ def _response(
 
 
 def test_alto_rejects_html_success_payload() -> None:
-    gallica = Gallica(
-        transport=StaticTransport(  # type: ignore[arg-type]
-            _response(b"<html><body>error</body></html>", content_type="text/html")
-        )
-    )
+    gallica = Gallica(transport=StaticTransport(_response(b"<html><body>error</body></html>", content_type="text/html")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="ALTO returned HTML"):
         gallica.document("bpt6k1").page(1).alto()
 
@@ -64,19 +60,13 @@ def test_image_rejects_empty_success_payload() -> None:
 
 
 def test_image_rejects_html_success_payload() -> None:
-    gallica = Gallica(
-        transport=StaticTransport(  # type: ignore[arg-type]
-            _response(b"<!doctype html><html></html>", content_type="text/html")
-        )
-    )
+    gallica = Gallica(transport=StaticTransport(_response(b"<!doctype html><html></html>", content_type="text/html")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="IIIF image returned HTML"):
         gallica.document("bpt6k1").page(1).image()
 
 
 def test_image_rejects_unknown_non_image_payload() -> None:
-    gallica = Gallica(
-        transport=StaticTransport(_response(b"this is neither an image nor html"))  # type: ignore[arg-type]
-    )
+    gallica = Gallica(transport=StaticTransport(_response(b"this is neither an image nor html")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="unexpected content type"):
         gallica.document("bpt6k1").page(1).image()
 
@@ -88,39 +78,19 @@ def test_image_accepts_jpeg_signature_without_content_type() -> None:
 
 
 def test_text_rejects_empty_success_payload() -> None:
-    gallica = Gallica(
-        transport=StaticTransport(  # type: ignore[arg-type]
-            _response(b"", url="https://gallica.bnf.fr/ark:/12148/bpt6k1.texteBrut")
-        )
-    )
+    gallica = Gallica(transport=StaticTransport(_response(b"", url="https://gallica.bnf.fr/ark:/12148/bpt6k1.texteBrut")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="empty"):
         gallica.document("bpt6k1").text()
 
 
 def test_text_accepts_legitimate_html_representation() -> None:
     payload = b"<html><body><p>Rappel de votre demande</p><p>OCR text</p></body></html>"
-    gallica = Gallica(
-        transport=StaticTransport(  # type: ignore[arg-type]
-            _response(
-                payload,
-                content_type="text/html; charset=utf-8",
-                url="https://gallica.bnf.fr/ark:/12148/bpt6k1.texteBrut",
-            )
-        )
-    )
+    gallica = Gallica(transport=StaticTransport(_response(payload, content_type="text/html; charset=utf-8", url="https://gallica.bnf.fr/ark:/12148/bpt6k1.texteBrut")))  # type: ignore[arg-type]
     assert "OCR text" in gallica.document("bpt6k1").text()
 
 
 def test_text_rejects_altcha_challenge() -> None:
-    gallica = Gallica(
-        transport=StaticTransport(  # type: ignore[arg-type]
-            _response(
-                b"<html><body><altcha-widget></altcha-widget></body></html>",
-                content_type="text/html",
-                url="https://gallica.bnf.fr/services/engine/search/altcha",
-            )
-        )
-    )
+    gallica = Gallica(transport=StaticTransport(_response(b"<html><body><altcha-widget></altcha-widget></body></html>", content_type="text/html", url="https://gallica.bnf.fr/services/engine/search/altcha")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="anti-bot challenge"):
         gallica.document("bpt6k1").text()
 
@@ -132,25 +102,21 @@ def test_sru_rejects_html_root_even_with_http_200() -> None:
 
 
 def test_pagination_rejects_malformed_and_non_integer_counts() -> None:
-    malformed = Gallica(transport=StaticTransport(_response(b"<results>")))  # type: ignore[arg-type]
-    with pytest.raises(GallicaResponseError, match="not valid XML"):
+    malformed = Gallica(transport=StaticTransport(_response(b"<livre>")))  # type: ignore[arg-type]
+    with pytest.raises(GallicaResponseError, match="invalid XML"):
         malformed.document("bpt6k1").page_count()
 
-    non_integer = Gallica(
-        transport=StaticTransport(_response(b"<results><nbVueImages>many</nbVueImages></results>"))  # type: ignore[arg-type]
-    )
+    non_integer = Gallica(transport=StaticTransport(_response(b"<livre><structure><nbVueImages>many</nbVueImages></structure></livre>")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="not an integer"):
         non_integer.document("bpt6k1").page_count()
 
-    missing = Gallica(transport=StaticTransport(_response(b"<results/>")))  # type: ignore[arg-type]
+    missing = Gallica(transport=StaticTransport(_response(b"<livre><structure/></livre>")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="does not contain"):
         missing.document("bpt6k1").page_count()
 
 
 def test_content_search_rejects_invalid_count_results() -> None:
-    gallica = Gallica(
-        transport=StaticTransport(_response(b'<results countResults="not-a-number"/>'))  # type: ignore[arg-type]
-    )
+    gallica = Gallica(transport=StaticTransport(_response(b'<results countResults="not-a-number"/>')))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="countResults"):
         gallica.document("bpt6k1").search_text("test")
 
@@ -168,24 +134,18 @@ def test_content_search_rejects_malformed_geometry_and_score() -> None:
 
 
 def test_iiif_info_rejects_invalid_json_and_non_object_payloads() -> None:
-    malformed = Gallica(
-        transport=StaticTransport(_response(b"not-json", content_type="application/json"))  # type: ignore[arg-type]
-    )
+    malformed = Gallica(transport=StaticTransport(_response(b"not-json", content_type="application/json")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="not valid JSON"):
         malformed.document("bpt6k1").page(1).iiif_info()
 
-    non_object = Gallica(
-        transport=StaticTransport(_response(b"[]", content_type="application/json"))  # type: ignore[arg-type]
-    )
+    non_object = Gallica(transport=StaticTransport(_response(b"[]", content_type="application/json")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="not a JSON object"):
         non_object.document("bpt6k1").page(1).iiif_info()
 
 
 def test_iiif_info_requires_dimensions() -> None:
     payload = json.dumps({"width": 1000}).encode()
-    gallica = Gallica(
-        transport=StaticTransport(_response(payload, content_type="application/json"))  # type: ignore[arg-type]
-    )
+    gallica = Gallica(transport=StaticTransport(_response(payload, content_type="application/json")))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="width/height"):
         gallica.document("bpt6k1").page(1).iiif_info()
 
