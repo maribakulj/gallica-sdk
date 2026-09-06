@@ -6,6 +6,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+CATEGORY_CQL_FIELDS: dict[str, str] = {
+    "provenance": "provenance",
+    "language": "dc.language",
+    "sdewey": "sdewey",
+    "century": "century",
+    "typedoc": "dc.type",
+    "date": "dc.date",
+    "free_access": "access",
+    "creator": "dc.creator",
+    "nqamoyen": "ocr.quality",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class DublinCoreRecord:
@@ -69,6 +81,46 @@ class SearchResults:
                 stream.write(json.dumps(record.as_dict(), ensure_ascii=False, sort_keys=True))
                 stream.write("\n")
         return output
+
+
+@dataclass(frozen=True, slots=True)
+class CategoryValue:
+    """One value returned by Gallica's Categories search-refinement service."""
+
+    category: str
+    clean_value: str
+    approximate_count: int
+    label: str | None
+
+    @property
+    def display_value(self) -> str:
+        return self.label or self.clean_value
+
+    @property
+    def cql_field(self) -> str | None:
+        return CATEGORY_CQL_FIELDS.get(self.category)
+
+
+@dataclass(frozen=True, slots=True)
+class Categories:
+    """Typed Categories response preserving the original JSON payload."""
+
+    query: str
+    values: tuple[CategoryValue, ...]
+    raw_json: str
+
+    def __iter__(self) -> Iterator[CategoryValue]:
+        return iter(self.values)
+
+    def __len__(self) -> int:
+        return len(self.values)
+
+    def for_category(self, category: str) -> tuple[CategoryValue, ...]:
+        return tuple(item for item in self.values if item.category == category)
+
+    @property
+    def categories(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(item.category for item in self.values))
 
 
 @dataclass(frozen=True, slots=True)

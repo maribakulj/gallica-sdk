@@ -8,6 +8,7 @@
   "operational_contracts_export": "python scripts/export_operational_contracts.py",
   "services": [
     {"id": "sru", "name": "Gallica SRU 1.2", "kind": "search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/SRU", "documentation": ["https://api.bnf.fr/"], "notes": ["maximumRecords is capped at 50 by the SDK"]},
+    {"id": "categories", "name": "Gallica Categories", "kind": "search-refinement", "status": "environment-limited", "base_url": "https://gallica.bnf.fr/services/Categories", "documentation": ["https://api.bnf.fr/fr/api-gallica-de-recherche"], "notes": ["accepts an SRU/CQL query through the SRU parameter", "returns JSON category values with approximate howMany counts when machine access is allowed", "at most 20 values are returned per category and some categories are not exhaustive", "API category names do not always match their CQL refinement fields", "public cold runners and external fetches returned HTML/403 on 2026-09-06; the SDK rejects that response instead of treating it as Categories JSON"]},
     {"id": "oai-record", "name": "Gallica OAIRecord", "kind": "metadata", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/OAIRecord", "documentation": ["https://api.bnf.fr/"], "notes": ["Dublin Core values may repeat"]},
     {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["returns navigation metadata plus per-view logical page labels", "nbVueImages is exposed as Pagination.image_views"]},
     {"id": "toc", "name": "Gallica Toc", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Toc", "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["legacy digitizations may return HTML", "newer digitizations return TEI XML", "the SDK preserves the upstream representation instead of forcing a lossy common model"]},
@@ -23,6 +24,7 @@
     {"id": "periodical", "call": "Gallica.periodical"},
     {"id": "corpus", "call": "Gallica.corpus"},
     {"id": "search", "call": "Gallica.search"},
+    {"id": "categories", "call": "Gallica.categories"},
     {"id": "search_all", "call": "Gallica.search_all"},
     {"id": "document_metadata", "call": "Document.metadata"},
     {"id": "document_pagination", "call": "Document.pagination"},
@@ -44,6 +46,7 @@
     {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata artifacts, provenance-aware resume and manifest stability.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
     {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
     {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.search_categories", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_categories_exposes_search_refinements", "description": "Public validation for Categories search refinements, approximate counts and API-category to CQL-field mappings.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
     {"id": "example.search_to_corpus", "kind": "example", "status": "checked-in", "target": "examples/search_to_corpus.py", "description": "Minimal search-to-corpus workflow intended for humans and coding agents.", "confidence": "reference"}
   ],
   "capability_evidence": [
@@ -51,6 +54,7 @@
     {"capability": "periodical", "services": [], "evidence": [], "example": null},
     {"capability": "corpus", "services": [], "evidence": ["live.search_pagination"], "example": "example.search_to_corpus"},
     {"capability": "search", "services": ["sru"], "evidence": ["live.vertical_slice"], "example": "example.search_to_corpus"},
+    {"capability": "categories", "services": ["categories"], "evidence": ["live.search_categories"], "example": null},
     {"capability": "search_all", "services": ["sru"], "evidence": ["live.search_pagination"], "example": "example.search_to_corpus"},
     {"capability": "document_metadata", "services": ["oai-record"], "evidence": ["live.vertical_slice", "live.corpus_document"], "example": null},
     {"capability": "document_pagination", "services": ["pagination"], "evidence": ["live.vertical_slice"], "example": null},
@@ -74,7 +78,7 @@
     "Every service/evidence reference in capability_evidence must resolve in this manifest.",
     "Every public capability must have exactly one capability_evidence record.",
     "Operational contracts resolve canonical capabilities, services and evidence rather than duplicating them as independent truth.",
-    "Raw XML remains available when the SDK exposes a structured XML-derived model.",
+    "Raw upstream payloads remain available when the SDK exposes a structured model.",
     "Corpus page downloads never imply all pages; views must be explicit.",
     "Rate-limit behavior is centralized in the shared transport.",
     "The checked-in JSON reference must exactly match this canonical Python representation."

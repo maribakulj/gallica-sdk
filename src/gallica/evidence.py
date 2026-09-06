@@ -74,6 +74,7 @@ EVIDENCE: tuple[EvidenceSpec, ...] = (
     {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata artifacts, provenance-aware resume and manifest stability.", **_LAST_LIVE_OBSERVATION},
     {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", **_LAST_LIVE_OBSERVATION},
     {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus.", **_LAST_LIVE_OBSERVATION},
+    {"id": "live.search_categories", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_categories_exposes_search_refinements", "description": "Public validation for Categories search refinements, approximate counts and API-category to CQL-field mappings.", **_LAST_LIVE_OBSERVATION},
     {"id": "example.search_to_corpus", "kind": "example", "status": "checked-in", "target": "examples/search_to_corpus.py", "description": "Minimal search-to-corpus workflow intended for humans and coding agents.", "confidence": "reference"},
 )
 
@@ -83,6 +84,7 @@ CAPABILITY_EVIDENCE: tuple[CapabilityEvidence, ...] = (
     {"capability": "periodical", "services": (), "evidence": (), "example": None},
     {"capability": "corpus", "services": (), "evidence": ("live.search_pagination",), "example": "example.search_to_corpus"},
     {"capability": "search", "services": ("sru",), "evidence": ("live.vertical_slice",), "example": "example.search_to_corpus"},
+    {"capability": "categories", "services": ("categories",), "evidence": ("live.search_categories",), "example": None},
     {"capability": "search_all", "services": ("sru",), "evidence": ("live.search_pagination",), "example": "example.search_to_corpus"},
     {"capability": "document_metadata", "services": ("oai-record",), "evidence": ("live.vertical_slice", "live.corpus_document"), "example": None},
     {"capability": "document_pagination", "services": ("pagination",), "evidence": ("live.vertical_slice",), "example": None},

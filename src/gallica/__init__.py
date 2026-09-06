@@ -23,6 +23,9 @@ from .evidence import (
 )
 from .exceptions import GallicaError, GallicaResponseError
 from .models import (
+    CATEGORY_CQL_FIELDS,
+    Categories,
+    CategoryValue,
     ContentSearchItem,
     ContentSearchMatch,
     ContentSearchResults,
@@ -38,8 +41,11 @@ from .periodical import Periodical
 from .reference import ReferenceSpec, programmable_reference
 
 __all__ = [
+    "CATEGORY_CQL_FIELDS",
     "CapabilityEvidence",
     "CapabilitySpec",
+    "Categories",
+    "CategoryValue",
     "ContentSearchItem",
     "ContentSearchMatch",
     "ContentSearchResults",
