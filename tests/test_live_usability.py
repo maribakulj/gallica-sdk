@@ -17,3 +17,21 @@ def test_public_search_all_paginates_and_exposes_arks() -> None:
         assert len(first_page.arks) == 3
         corpus = gallica.corpus(first_page.arks)
         assert len(corpus) == 3
+
+
+def test_public_categories_exposes_search_refinements() -> None:
+    with Gallica() as gallica:
+        categories = gallica.categories('gallica all "Verdun"')
+        assert len(categories) > 0
+        assert "language" in categories.categories
+        assert "typedoc" in categories.categories
+
+        language = categories.for_category("language")
+        assert language
+        assert all(item.approximate_count >= 0 for item in language)
+        assert all(item.cql_field == "dc.language" for item in language)
+
+        typedoc = categories.for_category("typedoc")
+        assert typedoc
+        assert all(item.cql_field == "dc.type" for item in typedoc)
+        assert all(item.clean_value for item in typedoc)
