@@ -4,7 +4,13 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .models import ContentSearchItem, ContentSearchResults, DocumentMetadata
+from .models import (
+    ContentSearchItem,
+    ContentSearchResults,
+    DocumentMetadata,
+    Pagination,
+    TocDocument,
+)
 
 if TYPE_CHECKING:
     from .client import Gallica
@@ -19,9 +25,17 @@ class Document:
         """Return typed Dublin Core and technical OAIRecord metadata."""
         return self._gallica._metadata(self.ark)
 
+    def pagination(self) -> Pagination:
+        """Return the complete typed Pagination structure for this document."""
+        return self._gallica._pagination(self.ark)
+
     def page_count(self) -> int:
         """Return the number of image views reported by Pagination."""
-        return self._gallica._page_count(self.ark)
+        return self.pagination().image_views
+
+    def toc(self) -> TocDocument:
+        """Return the table of contents as legacy HTML or TEI XML."""
+        return self._gallica._toc(self.ark)
 
     def text(self) -> str:
         """Return the document OCR text through Gallica's .texteBrut representation."""
@@ -53,11 +67,7 @@ class Document:
         page: int | None = None,
         limit: int | None = None,
     ) -> Iterator[ContentSearchItem]:
-        """Iterate lazily over ContentSearch results using ``startResult`` pagination.
-
-        The public service returns at most 10 items per request. No request beyond
-        what is needed for ``limit`` is made, and no eager all-results list is built.
-        """
+        """Iterate lazily over ContentSearch results using ``startResult`` pagination."""
         if page is not None and page < 1:
             raise ValueError("page must be >= 1")
         if limit is not None and limit < 1:
