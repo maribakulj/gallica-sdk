@@ -111,7 +111,7 @@ class TocDocument:
 
     format: Literal["html", "tei"]
     raw: str
-    well_formed: bool
+    well_formed: bool | None
 
 
 @dataclass(frozen=True, slots=True)
