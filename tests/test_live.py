@@ -27,7 +27,7 @@ def test_public_gallica_vertical_slice() -> None:
         assert pagination.has_toc is True
         assert pagination.toc_location == 328
         assert pagination.has_content is True
-        assert pagination.digital_id == "NUMM-5738219"
+        assert pagination.digital_id == "bpt6k5738219s"
         assert pagination.pages
         assert pagination.pages[0].order == 1
         assert doc.page_count() == pagination.image_views
