@@ -23,13 +23,54 @@ print(metadata.ocr_quality)
 
 `DocumentMetadata.raw_xml` conserve la réponse OAIRecord originale.
 
-## Nombre de vues
+## Structure et pagination
+
+Pour obtenir uniquement le nombre de vues image :
 
 ```python
 count = document.page_count()
 ```
 
-Le SDK utilise la structure retournée par le service Pagination et expose `nbVueImages` sous forme d'un entier.
+Pour exploiter la structure complète retournée par le service Pagination :
+
+```python
+pagination = document.pagination()
+
+print(pagination.image_views)
+print(pagination.first_displayed_page)
+print(pagination.has_toc)
+print(pagination.toc_location)
+
+for page in pagination.pages:
+    print(page.order, page.number, page.pagination_type, page.legend)
+```
+
+`Pagination` expose notamment les informations de navigation du document, le nombre de vues image/audio et, lorsqu'elles sont présentes, les étiquettes de pagination logique de chaque vue. `Document.page_count()` est volontairement une simple projection de `Pagination.image_views` : il n'existe pas un second contrat Pagination caché uniquement pour compter les pages.
+
+Le XML d'origine reste disponible dans `pagination.raw_xml`.
+
+## Table des matières
+
+```python
+toc = document.toc()
+print(toc.format)
+print(toc.raw[:200])
+```
+
+Le service Gallica possède deux représentations historiques : certaines numérisations renvoient une table des matières HTML, d'autres un document XML TEI. Le SDK les distingue donc explicitement :
+
+```python
+if toc.format == "html":
+    # contenu HTML historique
+    ...
+elif toc.format == "tei":
+    # contenu XML TEI
+    ...
+```
+
+Le SDK ne les force pas dans un modèle commun potentiellement destructeur. `toc.raw` conserve la représentation amont exacte ; les traitements spécialisés peuvent ensuite parser HTML ou TEI selon leur besoin.
+
+`pagination.has_toc` et `pagination.toc_location` permettent de savoir si le service Pagination signale une table des matières et à quelle vue elle est associée, sans télécharger le TOC lui-même.
 
 ## OCR texte brut
 
