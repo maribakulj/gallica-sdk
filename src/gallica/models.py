@@ -10,7 +10,6 @@ CATEGORY_CQL_FIELDS: dict[str, str] = {
     "provenance": "provenance",
     "language": "dc.language",
     "sdewey": "sdewey",
-    "dewey": "dewey",
     "century": "century",
     "typedoc": "dc.type",
     "date": "dc.date",
