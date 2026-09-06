@@ -19,7 +19,7 @@ def test_public_search_all_paginates_and_exposes_arks() -> None:
         assert len(corpus) == 3
 
 
-def test_public_categories_exposes_or_safely_rejects_search_refinements() -> None:
+def test_public_categories_exposes_search_refinements() -> None:
     with Gallica() as gallica:
         try:
             categories = gallica.categories('gallica all "Verdun"')
