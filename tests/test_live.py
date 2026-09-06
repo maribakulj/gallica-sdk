@@ -21,7 +21,21 @@ def test_public_gallica_vertical_slice() -> None:
         assert "searchRetrieveResponse" in results.raw_xml
 
         doc = gallica.document("bpt6k5738219s")
-        assert doc.page_count() == 374
+        pagination = doc.pagination()
+        assert pagination.image_views == 374
+        assert pagination.first_displayed_page == 12
+        assert pagination.has_toc is True
+        assert pagination.toc_location == 328
+        assert pagination.has_content is True
+        assert pagination.digital_id == "NUMM-5738219"
+        assert pagination.pages
+        assert pagination.pages[0].order == 1
+        assert doc.page_count() == pagination.image_views
+
+        toc = gallica.document("bpt6k97540464").toc()
+        assert toc.format == "tei"
+        assert "TEI.2" in toc.raw or "<TEI" in toc.raw
+
         metadata = doc.metadata()
         assert metadata.ark == "bpt6k5738219s"
         assert metadata.record.identifiers
@@ -43,8 +57,6 @@ def test_public_gallica_phase1_document_access() -> None:
         try:
             text = text_doc.text()
         except GallicaResponseError as exc:
-            # Public cold runners are currently redirected to Gallica's anti-bot
-            # challenge. Detecting that response is the expected safe behavior.
             assert "anti-bot challenge" in str(exc)
         else:
             assert len(text) > 100
@@ -82,10 +94,6 @@ def test_public_gallica_corpus_v1(tmp_path: Path) -> None:
     with Gallica() as gallica:
         corpus = gallica.corpus(["ark:/12148/bpt6k5460422k", "bpt6k5460422k"])
         assert len(corpus) == 1
-
-        # texteBrut is environment-limited on public cold runners, so this live
-        # corpus contract validates metadata + provenance-aware resume. Page-level
-        # ALTO/image artifacts are covered separately below.
         report = corpus.fetch(tmp_path, metadata=True, text=False, resume=True)
         assert len(report.successes) == 1
         assert not report.failures
