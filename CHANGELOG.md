@@ -8,7 +8,8 @@ The project follows semantic versioning once a first public release is published
 
 ### Added
 
-- typed Python access to Gallica SRU, OAIRecord, Pagination, Toc, Issues, ContentSearch, plain OCR text, ALTO and IIIF Image services;
+- typed Python access to Gallica SRU, Categories, OAIRecord, Pagination, Toc, Issues, ContentSearch, plain OCR text, ALTO and IIIF Image services;
+- `Gallica.categories()` with typed search refinements, approximate-count semantics, official Categories → CQL field mapping and raw JSON preservation;
 - structured `Document.pagination()` access with navigation metadata, image/audio view counts and logical page labels while preserving raw XML;
 - `Document.toc()` with explicit preservation of legacy HTML versus TEI XML table-of-contents representations;
 - `Document`, `Page`, `Periodical` and resumable `Corpus` abstractions;
