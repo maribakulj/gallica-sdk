@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-
 CATEGORY_CQL_FIELDS: dict[str, str] = {
     "provenance": "provenance",
     "language": "dc.language",
