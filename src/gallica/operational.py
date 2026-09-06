@@ -43,7 +43,9 @@ _SEMANTICS: dict[str, OperationalSemantics] = {
     "search": {"source_media_type": "application/xml", "output_semantics": "One SRU page parsed into SearchResults while preserving raw_xml.", "errors": ("maximum_records outside 1..50 raises ValueError before the request.", "Unrecoverable HTTP responses propagate as httpx HTTP errors after bounded retries.")},
     "search_all": {"source_media_type": "application/xml", "output_semantics": "Lazy iterator of DublinCoreRecord values fetched one SRU page at a time.", "errors": ("page_size outside 1..50 or a non-positive limit raises ValueError.", "Network failures may occur during iteration because pages are fetched lazily.")},
     "document_metadata": {"source_media_type": "application/xml", "output_semantics": "DocumentMetadata with repeatable Dublin Core fields, Gallica technical fields and raw_xml.", "errors": ("Unrecoverable HTTP or malformed XML failures propagate to the caller.",)},
-    "document_page_count": {"source_media_type": "application/xml", "output_semantics": "Integer image-view count parsed from Pagination nbVueImages.", "errors": ("Missing or unparsable nbVueImages raises a parsing error rather than returning a guessed count.",)},
+    "document_pagination": {"source_media_type": "application/xml", "output_semantics": "Complete Pagination model with navigation flags, image/audio counts, logical page labels, optional legends and raw_xml.", "errors": ("Malformed XML, invalid booleans or integer fields, missing structure, invalid nbVueImages or invalid page orders raise GallicaResponseError.",)},
+    "document_page_count": {"source_media_type": "application/xml", "output_semantics": "Integer image-view count projected from Pagination.image_views.", "errors": ("Pagination parsing failures propagate rather than returning a guessed count.",)},
+    "document_toc": {"source_media_type": "text/html or application/xml", "output_semantics": "TocDocument preserving the upstream representation as legacy HTML or TEI. well_formed is None for HTML, True for parseable TEI and False for recognizable TEI that the public service returns malformed.", "errors": ("Empty payloads, unrecognized malformed payloads or well-formed XML with an unexpected root raise GallicaResponseError.",)},
     "document_text": {"source_media_type": "text/html or text", "output_semantics": "OCR text representation for the document; legitimate texteBrut HTML is preserved while anti-bot challenge responses are rejected.", "errors": ("Unrecoverable HTTP errors propagate after throttling and bounded retries.", "Anti-bot challenge responses raise GallicaResponseError instead of being returned as OCR.")},
     "content_search": {"source_media_type": "application/xml", "output_semantics": "One typed ContentSearchResults page. Without page it exposes highlighted page excerpts; with page it also exposes master-image dimensions and every OCR word rectangle returned in altoidstring elements. raw_xml is preserved.", "errors": ("page and start_result must be positive when supplied.", "Invalid countResults, dimensions or OCR rectangle coordinates raise GallicaResponseError.", "Unrecoverable HTTP or malformed XML failures propagate to the caller.")},
     "content_search_all": {"source_media_type": "application/xml", "output_semantics": "Lazy iterator over ContentSearchItem values, advancing startResult across the service's fixed 10-item response pages and stopping at the optional limit.", "errors": ("page and limit must be positive when supplied.", "Network or parsing failures can occur during iteration because result pages are fetched lazily.")},
@@ -60,58 +62,25 @@ def _parameter_dicts(spec: CapabilitySpec) -> tuple[dict[str, object], ...]:
     return tuple(dict(parameter) for parameter in spec["parameters"])
 
 
-def operational_contracts(
-    *,
-    attestation: EvidenceAttestation | None = None,
-) -> tuple[OperationalContract, ...]:
-    """Resolve capabilities, services and evidence into agent-facing contracts.
-
-    Freshness is ``unknown`` unless the caller supplies a CI-generated attestation.
-    """
+def operational_contracts(*, attestation: EvidenceAttestation | None = None) -> tuple[OperationalContract, ...]:
     services_by_id = {service["id"]: service for service in SERVICES}
     evidence_by_id = {item["id"]: item for item in evidence()}
     freshness_by_id = {item["id"]: item for item in evidence_freshness(attestation=attestation)}
     links_by_capability = {item["capability"]: item for item in capability_evidence()}
-
     result: list[OperationalContract] = []
     for spec in capabilities():
         capability_id = spec["id"]
         semantics = _SEMANTICS[capability_id]
         links = links_by_capability[capability_id]
         linked_evidence = tuple(evidence_by_id[item_id] for item_id in links["evidence"])
-        linked_freshness = tuple(
-            freshness_by_id[item_id]
-            for item_id in links["evidence"]
-            if item_id in freshness_by_id
-        )
+        linked_freshness = tuple(freshness_by_id[item_id] for item_id in links["evidence"] if item_id in freshness_by_id)
         example_id = links["example"]
         example = evidence_by_id[example_id] if example_id is not None else None
-        result.append(
-            {
-                "id": capability_id,
-                "call": spec["call"],
-                "description": spec["description"],
-                "parameters": _parameter_dicts(spec),
-                "returns": spec["returns"],
-                "constraints": spec["constraints"],
-                "source_media_type": semantics["source_media_type"],
-                "output_semantics": semantics["output_semantics"],
-                "errors": semantics["errors"],
-                "services": tuple(services_by_id[item_id] for item_id in links["services"]),
-                "evidence": linked_evidence,
-                "freshness": linked_freshness,
-                "example": example,
-            }
-        )
+        result.append({"id": capability_id, "call": spec["call"], "description": spec["description"], "parameters": _parameter_dicts(spec), "returns": spec["returns"], "constraints": spec["constraints"], "source_media_type": semantics["source_media_type"], "output_semantics": semantics["output_semantics"], "errors": semantics["errors"], "services": tuple(services_by_id[item_id] for item_id in links["services"]), "evidence": linked_evidence, "freshness": linked_freshness, "example": example})
     return tuple(result)
 
 
-def operational_contract(
-    capability_id: str,
-    *,
-    attestation: EvidenceAttestation | None = None,
-) -> OperationalContract:
-    """Return one fully resolved capability contract by stable capability ID."""
+def operational_contract(capability_id: str, *, attestation: EvidenceAttestation | None = None) -> OperationalContract:
     for contract in operational_contracts(attestation=attestation):
         if contract["id"] == capability_id:
             return contract

@@ -10,6 +10,8 @@ from .models import (
     ContentSearchResults,
     DocumentMetadata,
     DublinCoreRecord,
+    Pagination,
+    PaginationPage,
     SearchResults,
 )
 
@@ -189,3 +191,75 @@ def parse_content_search(xml: str, *, fallback_query: str) -> ContentSearchResul
         )
 
     return ContentSearchResults(query=query, total=total, items=tuple(items), raw_xml=xml)
+
+
+def _pagination_optional_text(parent: ET.Element, name: str) -> str | None:
+    for child in parent:
+        if _local_name(child.tag) == name:
+            value = (child.text or "").strip()
+            return value or None
+    return None
+
+
+def _pagination_optional_int(parent: ET.Element, name: str) -> int | None:
+    value = _pagination_optional_text(parent, name)
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise GallicaResponseError(f"Pagination {name} is not an integer") from exc
+
+
+def _pagination_optional_bool(parent: ET.Element, name: str) -> bool | None:
+    value = _pagination_optional_text(parent, name)
+    if value is None:
+        return None
+    normalized = value.lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise GallicaResponseError(f"Pagination {name} is not a boolean")
+
+
+def parse_pagination(xml: str) -> Pagination:
+    root = _parse_xml(xml, expected_root="livre")
+    structure = next(
+        (element for element in root if _local_name(element.tag) == "structure"),
+        None,
+    )
+    if structure is None:
+        raise GallicaResponseError("Pagination response does not contain structure")
+
+    image_views = _pagination_optional_int(structure, "nbVueImages")
+    if image_views is None or image_views < 1:
+        raise GallicaResponseError("Pagination response does not contain a valid nbVueImages")
+
+    pages: list[PaginationPage] = []
+    for element in root.iter():
+        if _local_name(element.tag) != "page":
+            continue
+        order = _pagination_optional_int(element, "ordre")
+        if order is None or order < 1:
+            raise GallicaResponseError("Pagination page does not contain a valid ordre")
+        pages.append(
+            PaginationPage(
+                number=_pagination_optional_text(element, "numero"),
+                order=order,
+                pagination_type=_pagination_optional_text(element, "pagination_type"),
+                legend=_pagination_optional_text(element, "legend"),
+            )
+        )
+
+    return Pagination(
+        first_displayed_page=_pagination_optional_int(structure, "firstDisplayedPage"),
+        has_toc=_pagination_optional_bool(structure, "hasToc"),
+        toc_location=_pagination_optional_int(structure, "TocLocation"),
+        has_content=_pagination_optional_bool(structure, "hasContent"),
+        digital_id=_pagination_optional_text(structure, "idUPN"),
+        image_views=image_views,
+        audio_views=_pagination_optional_int(structure, "nbVueAudio"),
+        pages=tuple(pages),
+        raw_xml=xml,
+    )

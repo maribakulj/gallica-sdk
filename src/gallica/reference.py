@@ -42,7 +42,8 @@ class ReferenceSpec(TypedDict):
 SERVICES: tuple[ServiceSpec, ...] = (
     {"id": "sru", "name": "Gallica SRU 1.2", "kind": "search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/SRU", "documentation": ("https://api.bnf.fr/",), "notes": ("maximumRecords is capped at 50 by the SDK",)},
     {"id": "oai-record", "name": "Gallica OAIRecord", "kind": "metadata", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/OAIRecord", "documentation": ("https://api.bnf.fr/",), "notes": ("Dublin Core values may repeat",)},
-    {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ("https://api.bnf.fr/",), "notes": ("nbVueImages is used as the image-view count",)},
+    {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ("https://api.bnf.fr/fr/api-document-de-gallica",), "notes": ("returns navigation metadata plus per-view logical page labels", "nbVueImages is exposed as Pagination.image_views")},
+    {"id": "toc", "name": "Gallica Toc", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Toc", "documentation": ("https://api.bnf.fr/fr/api-document-de-gallica",), "notes": ("legacy digitizations may return HTML", "newer digitizations return TEI XML", "the SDK preserves the upstream representation instead of forcing a lossy common model")},
     {"id": "issues", "name": "Gallica Issues", "kind": "periodicals", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Issues", "documentation": ("https://api.bnf.fr/",), "notes": ("dated issue resolution uses dayOfYear",)},
     {"id": "content-search", "name": "Gallica ContentSearch", "kind": "ocr-search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/ContentSearch", "documentation": ("https://api.bnf.fr/fr/api-document-de-gallica",), "notes": ("the service returns at most 10 items per response and startResult paginates further results", "with page supplied, p_width/p_height and altoidstring rectangles locate OCR matches in master-image coordinates")},
     {"id": "text", "name": "Gallica plain OCR text", "kind": "ocr", "status": "environment-limited", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ("https://api.bnf.fr/fr/node/232", "https://api.bnf.fr/fr/api-document-de-gallica"), "notes": ("public quota documented as 5 requests/minute", "texteBrut legitimately returns an HTML representation containing OCR text", "public cold CI runners were redirected to Gallica's anti-bot challenge on 2026-09-05; the SDK detects and rejects that challenge")},
@@ -53,7 +54,6 @@ SERVICES: tuple[ServiceSpec, ...] = (
 
 
 def programmable_reference() -> ReferenceSpec:
-    """Return the canonical discovery manifest with validation provenance."""
     return {
         "id": REFERENCE_ID,
         "schema_version": REFERENCE_SCHEMA_VERSION,

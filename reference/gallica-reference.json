@@ -9,7 +9,8 @@
   "services": [
     {"id": "sru", "name": "Gallica SRU 1.2", "kind": "search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/SRU", "documentation": ["https://api.bnf.fr/"], "notes": ["maximumRecords is capped at 50 by the SDK"]},
     {"id": "oai-record", "name": "Gallica OAIRecord", "kind": "metadata", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/OAIRecord", "documentation": ["https://api.bnf.fr/"], "notes": ["Dublin Core values may repeat"]},
-    {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ["https://api.bnf.fr/"], "notes": ["nbVueImages is used as the image-view count"]},
+    {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["returns navigation metadata plus per-view logical page labels", "nbVueImages is exposed as Pagination.image_views"]},
+    {"id": "toc", "name": "Gallica Toc", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Toc", "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["legacy digitizations may return HTML", "newer digitizations return TEI XML", "the SDK preserves the upstream representation instead of forcing a lossy common model"]},
     {"id": "issues", "name": "Gallica Issues", "kind": "periodicals", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Issues", "documentation": ["https://api.bnf.fr/"], "notes": ["dated issue resolution uses dayOfYear"]},
     {"id": "content-search", "name": "Gallica ContentSearch", "kind": "ocr-search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/ContentSearch", "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["the service returns at most 10 items per response and startResult paginates further results", "with page supplied, p_width/p_height and altoidstring rectangles locate OCR matches in master-image coordinates"]},
     {"id": "text", "name": "Gallica plain OCR text", "kind": "ocr", "status": "environment-limited", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ["https://api.bnf.fr/fr/node/232", "https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["public quota documented as 5 requests/minute", "texteBrut legitimately returns an HTML representation containing OCR text", "public cold CI runners were redirected to Gallica's anti-bot challenge on 2026-09-05; the SDK detects and rejects that challenge"]},
@@ -24,7 +25,9 @@
     {"id": "search", "call": "Gallica.search"},
     {"id": "search_all", "call": "Gallica.search_all"},
     {"id": "document_metadata", "call": "Document.metadata"},
+    {"id": "document_pagination", "call": "Document.pagination"},
     {"id": "document_page_count", "call": "Document.page_count"},
+    {"id": "document_toc", "call": "Document.toc"},
     {"id": "document_text", "call": "Document.text"},
     {"id": "content_search", "call": "Document.search_text"},
     {"id": "content_search_all", "call": "Document.search_text_all"},
@@ -36,7 +39,7 @@
     {"id": "corpus_fetch", "call": "Corpus.fetch"}
   ],
   "evidence": [
-    {"id": "live.vertical_slice", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_vertical_slice", "description": "Public smoke validation for SRU, Pagination, OAIRecord, ALTO and IIIF image access.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.vertical_slice", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_vertical_slice", "description": "Public smoke validation for SRU, structured Pagination, Toc, OAIRecord, ALTO and IIIF image access.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
     {"id": "live.document_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public validation for ContentSearch excerpts/geometry/pagination, dated Issues resolution and safe texteBrut behavior, including explicit anti-bot challenge detection when cold runners are blocked.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
     {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata artifacts, provenance-aware resume and manifest stability.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
     {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
@@ -50,7 +53,9 @@
     {"capability": "search", "services": ["sru"], "evidence": ["live.vertical_slice"], "example": "example.search_to_corpus"},
     {"capability": "search_all", "services": ["sru"], "evidence": ["live.search_pagination"], "example": "example.search_to_corpus"},
     {"capability": "document_metadata", "services": ["oai-record"], "evidence": ["live.vertical_slice", "live.corpus_document"], "example": null},
+    {"capability": "document_pagination", "services": ["pagination"], "evidence": ["live.vertical_slice"], "example": null},
     {"capability": "document_page_count", "services": ["pagination"], "evidence": ["live.vertical_slice"], "example": null},
+    {"capability": "document_toc", "services": ["toc"], "evidence": ["live.vertical_slice"], "example": null},
     {"capability": "document_text", "services": ["text"], "evidence": ["live.document_access"], "example": null},
     {"capability": "content_search", "services": ["content-search"], "evidence": ["live.document_access"], "example": null},
     {"capability": "content_search_all", "services": ["content-search"], "evidence": ["live.document_access"], "example": null},

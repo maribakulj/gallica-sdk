@@ -15,8 +15,15 @@ from .ark import ark_uri, normalize_ark
 from .corpus import Corpus
 from .document import Document
 from .exceptions import GallicaResponseError
-from .models import ContentSearchResults, DocumentMetadata, DublinCoreRecord, SearchResults
-from .parsing import parse_content_search, parse_oai_record, parse_sru
+from .models import (
+    ContentSearchResults,
+    DocumentMetadata,
+    DublinCoreRecord,
+    Pagination,
+    SearchResults,
+    TocDocument,
+)
+from .parsing import parse_content_search, parse_oai_record, parse_pagination, parse_sru
 from .periodical import Periodical
 from .transport import Transport
 
@@ -60,12 +67,12 @@ def _validate_image(response: httpx.Response) -> bytes:
     if content_type.startswith("image/"):
         return content
     signatures = (
-        b"\xff\xd8\xff",  # JPEG
+        b"\xff\xd8\xff",
         b"\x89PNG\r\n\x1a\n",
         b"GIF87a",
         b"GIF89a",
-        b"RIFF",  # WebP container, checked conservatively
-        b"\x00\x00\x00\x0cjP  \r\n\x87\n",  # JPEG 2000 signature box
+        b"RIFF",
+        b"\x00\x00\x00\x0cjP  \r\n\x87\n",
     )
     if any(content.startswith(signature) for signature in signatures):
         return content
@@ -75,12 +82,6 @@ def _validate_image(response: httpx.Response) -> bytes:
 
 
 def _validate_text(response: httpx.Response) -> str:
-    """Validate Gallica's texteBrut representation.
-
-    Despite its name, the public service legitimately returns an HTML document
-    containing OCR text. HTML is therefore not itself an error. Anti-bot challenge
-    responses are rejected using the final URL and challenge-specific markers.
-    """
     if not response.content.strip():
         raise GallicaResponseError("plain OCR text response is empty")
     final_path = response.url.path.lower()
@@ -88,6 +89,32 @@ def _validate_text(response: httpx.Response) -> str:
     if "/altcha" in final_path or b"altcha-widget" in prefix or b"/search/altcha" in prefix:
         raise GallicaResponseError("plain OCR text request was redirected to an anti-bot challenge")
     return response.text
+
+
+def _looks_like_tei(content: bytes) -> bool:
+    prefix = content.lstrip()[:4096]
+    return re.search(br"<(?:[A-Za-z0-9_.-]+:)?TEI(?:\.2)?(?:\s|>)", prefix, re.IGNORECASE) is not None
+
+
+def _validate_toc(response: httpx.Response) -> TocDocument:
+    if not response.content.strip():
+        raise GallicaResponseError("Toc response is empty")
+    if _looks_like_html(response.content):
+        return TocDocument(format="html", raw=response.text, well_formed=None)
+
+    looks_tei = _looks_like_tei(response.content)
+    try:
+        root = ET.fromstring(response.content)
+    except ET.ParseError as exc:
+        if looks_tei:
+            return TocDocument(format="tei", raw=response.text, well_formed=False)
+        raise GallicaResponseError("Toc response is neither recognizable HTML nor TEI") from exc
+
+    if _local_name(root.tag) not in {"TEI.2", "TEI"}:
+        raise GallicaResponseError(
+            f"Toc response has unexpected XML root {_local_name(root.tag)!r}"
+        )
+    return TocDocument(format="tei", raw=response.text, well_formed=True)
 
 
 class Gallica:
@@ -107,7 +134,6 @@ class Gallica:
 
     @staticmethod
     def capabilities() -> tuple[CapabilitySpec, ...]:
-        """Return machine-readable contracts for the supported SDK surface."""
         return capability_contracts()
 
     def document(self, ark: str) -> Document:
@@ -126,7 +152,6 @@ class Gallica:
         start_record: int = 1,
         maximum_records: int = 50,
     ) -> SearchResults:
-        """Search Gallica through SRU 1.2 and return one page of typed records."""
         if start_record < 1:
             raise ValueError("start_record must be >= 1")
         if not 1 <= maximum_records <= 50:
@@ -150,23 +175,17 @@ class Gallica:
         limit: int | None = None,
         page_size: int = 50,
     ) -> Iterator[DublinCoreRecord]:
-        """Iterate over SRU results while handling pagination lazily."""
         if limit is not None and limit < 1:
             raise ValueError("limit must be >= 1 when supplied")
         if not 1 <= page_size <= 50:
             raise ValueError("page_size must be between 1 and 50")
-
         yielded = 0
         start_record = 1
         while True:
             requested = page_size if limit is None else min(page_size, limit - yielded)
             if requested <= 0:
                 return
-            page = self.search(
-                query,
-                start_record=start_record,
-                maximum_records=requested,
-            )
+            page = self.search(query, start_record=start_record, maximum_records=requested)
             if not page.records:
                 return
             for record in page.records:
@@ -185,25 +204,23 @@ class Gallica:
         )
         return parse_oai_record(response.text, ark=normalized)
 
-    def _page_count(self, ark: str) -> int:
+    def _pagination(self, ark: str) -> Pagination:
         response = self._transport.get(
             f"{BASE_URL}/services/Pagination", params={"ark": normalize_ark(ark)}
         )
         if _looks_like_html(response.content):
             raise GallicaResponseError("Pagination returned HTML instead of XML")
-        try:
-            root = ET.fromstring(response.content)
-        except ET.ParseError as exc:
-            raise GallicaResponseError("Pagination response is not valid XML") from exc
-        for element in root.iter():
-            if _local_name(element.tag) == "nbVueImages" and element.text:
-                try:
-                    count = int(element.text)
-                except ValueError as exc:
-                    raise GallicaResponseError("Pagination nbVueImages is not an integer") from exc
-                if count > 0:
-                    return count
-        raise GallicaResponseError("Pagination response does not contain a valid nbVueImages")
+        return parse_pagination(response.text)
+
+    def _page_count(self, ark: str) -> int:
+        return self._pagination(ark).image_views
+
+    def _toc(self, ark: str) -> TocDocument:
+        response = self._transport.get(
+            f"{BASE_URL}/services/Toc",
+            params={"ark": f"ark:/12148/{normalize_ark(ark)}"},
+        )
+        return _validate_toc(response)
 
     def _text(self, ark: str, *, start_view: int | None = None, nviews: int | None = None) -> str:
         root = f"{BASE_URL}/ark:/12148/{normalize_ark(ark)}"

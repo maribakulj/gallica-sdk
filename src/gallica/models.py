@@ -4,6 +4,7 @@ import json
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +78,40 @@ class DocumentMetadata:
     indexing_mode: str | None
     ocr_quality: float | None
     raw_xml: str
+
+
+@dataclass(frozen=True, slots=True)
+class PaginationPage:
+    """One physical Gallica view as described by the Pagination service."""
+
+    number: str | None
+    order: int
+    pagination_type: str | None
+    legend: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Pagination:
+    """Typed Gallica Pagination response with the original XML preserved."""
+
+    first_displayed_page: int | None
+    has_toc: bool | None
+    toc_location: int | None
+    has_content: bool | None
+    digital_id: str | None
+    image_views: int
+    audio_views: int | None
+    pages: tuple[PaginationPage, ...]
+    raw_xml: str
+
+
+@dataclass(frozen=True, slots=True)
+class TocDocument:
+    """Gallica TOC payload preserving the upstream HTML or TEI representation."""
+
+    format: Literal["html", "tei"]
+    raw: str
+    well_formed: bool | None
 
 
 @dataclass(frozen=True, slots=True)

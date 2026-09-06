@@ -23,13 +23,58 @@ print(metadata.ocr_quality)
 
 `DocumentMetadata.raw_xml` conserve la réponse OAIRecord originale.
 
-## Nombre de vues
+## Structure et pagination
+
+Pour obtenir uniquement le nombre de vues image :
 
 ```python
 count = document.page_count()
 ```
 
-Le SDK utilise la structure retournée par le service Pagination et expose `nbVueImages` sous forme d'un entier.
+Pour exploiter la structure complète retournée par le service Pagination :
+
+```python
+pagination = document.pagination()
+
+print(pagination.image_views)
+print(pagination.first_displayed_page)
+print(pagination.has_toc)
+print(pagination.toc_location)
+
+for page in pagination.pages:
+    print(page.order, page.number, page.pagination_type, page.legend)
+```
+
+`Pagination` expose notamment les informations de navigation du document, le nombre de vues image/audio et, lorsqu'elles sont présentes, les étiquettes de pagination logique de chaque vue. `Document.page_count()` est volontairement une simple projection de `Pagination.image_views` : il n'existe pas un second contrat Pagination caché uniquement pour compter les pages.
+
+Le XML d'origine reste disponible dans `pagination.raw_xml`.
+
+## Table des matières
+
+```python
+toc = document.toc()
+print(toc.format)
+print(toc.well_formed)
+print(toc.raw[:200])
+```
+
+Le service Gallica possède deux représentations historiques : certaines numérisations renvoient une table des matières HTML, d'autres une représentation TEI. Le SDK les distingue donc explicitement :
+
+```python
+if toc.format == "html":
+    # contenu HTML historique ; well_formed vaut None
+    ...
+elif toc.format == "tei" and toc.well_formed:
+    # TEI directement parsable comme XML
+    ...
+elif toc.format == "tei":
+    # TEI identifiable mais XML amont mal formé ; le brut est préservé
+    ...
+```
+
+Le SDK ne force pas HTML et TEI dans un modèle commun potentiellement destructeur. Il ne répare pas non plus silencieusement un TEI mal formé : `toc.raw` conserve exactement la représentation reçue et `toc.well_formed` indique si cette représentation TEI est directement parsable. Cette distinction est nécessaire parce que le service public peut actuellement livrer un document explicitement TEI dont le XML n'est pas strictement bien formé.
+
+`pagination.has_toc` et `pagination.toc_location` permettent de savoir si le service Pagination signale une table des matières et à quelle vue elle est associée, sans télécharger le TOC lui-même.
 
 ## OCR texte brut
 
