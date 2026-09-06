@@ -8,11 +8,13 @@ The project follows semantic versioning once a first public release is published
 
 ### Added
 
-- typed Python access to Gallica SRU, OAIRecord, Pagination, Issues, ContentSearch, plain OCR text, ALTO and IIIF Image services;
+- typed Python access to Gallica SRU, OAIRecord, Pagination, Toc, Issues, ContentSearch, plain OCR text, ALTO and IIIF Image services;
+- structured `Document.pagination()` access with navigation metadata, image/audio view counts and logical page labels while preserving raw XML;
+- `Document.toc()` with explicit preservation of legacy HTML versus TEI XML table-of-contents representations;
 - `Document`, `Page`, `Periodical` and resumable `Corpus` abstractions;
 - lazy SRU pagination and search-result handoff to corpus workflows;
 - JSONL export for search results;
-- resumable corpus downloads with atomic writes, manifest tracking and per-ARK failure isolation;
+- resumable corpus downloads with atomic writes, manifest tracking and per-artifact failure isolation;
 - machine-readable capability contracts and agent recipes;
 - programmable Gallica service reference with JSON Schema;
 - capability → service → evidence graph;
@@ -30,10 +32,11 @@ The project follows semantic versioning once a first public release is published
 - installed CLI smoke checks from both wheel and sdist;
 - installed `py.typed` verification from both wheel and sdist;
 - `twine check` validation for built distributions;
-- CI for Python 3.11 and 3.12, Ruff, mypy strict, wheel/sdist packaging and public Gallica smoke tests.
+- CI for Python 3.11 through 3.14, Ruff, mypy strict, coverage, wheel/sdist packaging, Windows/macOS smoke tests and public Gallica smoke tests.
 
 ### Changed
 
+- `Document.page_count()` is now a projection of the structured `Pagination.image_views` contract rather than a separate XML parsing path;
 - project positioning expanded from a Python-only SDK to a verified programmable reference plus Python SDK;
 - package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;
 - programmable reference schema advanced to 2.0 to advertise the operational-contract export;
