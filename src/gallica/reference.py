@@ -41,6 +41,7 @@ class ReferenceSpec(TypedDict):
 
 SERVICES: tuple[ServiceSpec, ...] = (
     {"id": "sru", "name": "Gallica SRU 1.2", "kind": "search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/SRU", "documentation": ("https://api.bnf.fr/",), "notes": ("maximumRecords is capped at 50 by the SDK",)},
+    {"id": "categories", "name": "Gallica Categories", "kind": "search-refinement", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Categories", "documentation": ("https://api.bnf.fr/fr/api-gallica-de-recherche",), "notes": ("accepts an SRU/CQL query through the SRU parameter", "returns JSON category values with approximate howMany counts", "at most 20 values are returned per category and some categories are not exhaustive", "API category names do not always match their CQL refinement fields")},
     {"id": "oai-record", "name": "Gallica OAIRecord", "kind": "metadata", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/OAIRecord", "documentation": ("https://api.bnf.fr/",), "notes": ("Dublin Core values may repeat",)},
     {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ("https://api.bnf.fr/fr/api-document-de-gallica",), "notes": ("returns navigation metadata plus per-view logical page labels", "nbVueImages is exposed as Pagination.image_views")},
     {"id": "toc", "name": "Gallica Toc", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Toc", "documentation": ("https://api.bnf.fr/fr/api-document-de-gallica",), "notes": ("legacy digitizations may return HTML", "newer digitizations return TEI XML", "the SDK preserves the upstream representation instead of forcing a lossy common model")},
@@ -74,7 +75,7 @@ def programmable_reference() -> ReferenceSpec:
             "Every service/evidence reference in capability_evidence must resolve in this manifest.",
             "Every public capability must have exactly one capability_evidence record.",
             "Operational contracts resolve canonical capabilities, services and evidence rather than duplicating them as independent truth.",
-            "Raw XML remains available when the SDK exposes a structured XML-derived model.",
+            "Raw upstream payloads remain available when the SDK exposes a structured model.",
             "Corpus page downloads never imply all pages; views must be explicit.",
             "Rate-limit behavior is centralized in the shared transport.",
             "The checked-in JSON reference must exactly match this canonical Python representation.",
