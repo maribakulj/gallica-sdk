@@ -20,26 +20,16 @@ class FakeTransport:
         self.calls.append((url, normalized, bucket))
         request = httpx.Request("GET", url, params=params)
         if url.endswith("/services/Pagination"):
-            return httpx.Response(200, content=b"<results><structure><nbVueImages>374</nbVueImages></structure></results>", request=request)
+            return httpx.Response(200, content=b"<livre><structure><nbVueImages>374</nbVueImages></structure></livre>", request=request)
         if url.endswith("/services/OAIRecord"):
             xml = b'''<results xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"><notice><record><metadata><oai_dc:dc><dc:title>Example title</dc:title><dc:identifier>https://gallica.bnf.fr/ark:/12148/bpt6k5738219s</dc:identifier></oai_dc:dc></metadata></record></notice><mode_indexation>OCR</mode_indexation><nqamoyen>92.57</nqamoyen></results>'''
             return httpx.Response(200, content=xml, request=request)
         if url.endswith("/RequestDigitalElement"):
             return httpx.Response(200, content=b"<alto/>", request=request)
         if url.endswith("/info.json"):
-            return httpx.Response(
-                200,
-                content=json.dumps({"width": 10784, "height": 7200}).encode(),
-                headers={"Content-Type": "application/json"},
-                request=request,
-            )
+            return httpx.Response(200, content=json.dumps({"width": 10784, "height": 7200}).encode(), headers={"Content-Type": "application/json"}, request=request)
         if "/iiif/" in url:
-            return httpx.Response(
-                200,
-                content=b"\xff\xd8\xffjpeg",
-                headers={"Content-Type": "image/jpeg"},
-                request=request,
-            )
+            return httpx.Response(200, content=b"\xff\xd8\xffjpeg", headers={"Content-Type": "image/jpeg"}, request=request)
         if url.endswith("/SRU"):
             xml = b'''<srw:searchRetrieveResponse xmlns:srw="http://www.loc.gov/zing/srw/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"><srw:numberOfRecords>12</srw:numberOfRecords><srw:records><srw:record><srw:recordData><oai_dc:dc><dc:title>Verdun</dc:title><dc:creator>Auteur</dc:creator><dc:identifier>https://gallica.bnf.fr/ark:/12148/bpt6k123</dc:identifier></oai_dc:dc></srw:recordData></srw:record></srw:records></srw:searchRetrieveResponse>'''
             return httpx.Response(200, content=xml, request=request)
