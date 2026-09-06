@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable, Iterator
@@ -16,6 +17,8 @@ from .corpus import Corpus
 from .document import Document
 from .exceptions import GallicaResponseError
 from .models import (
+    Categories,
+    CategoryValue,
     ContentSearchResults,
     DocumentMetadata,
     DublinCoreRecord,
@@ -43,6 +46,42 @@ def _reject_html(response: httpx.Response, *, service: str) -> None:
     content_type = response.headers.get("Content-Type", "").lower()
     if "text/html" in content_type or _looks_like_html(response.content):
         raise GallicaResponseError(f"{service} returned HTML instead of the expected payload")
+
+
+def _validate_categories(response: httpx.Response, *, query: str) -> Categories:
+    _reject_html(response, service="Categories")
+    try:
+        payload: object = response.json()
+    except ValueError as exc:
+        raise GallicaResponseError("Categories response is not valid JSON") from exc
+    if not isinstance(payload, list):
+        raise GallicaResponseError("Categories response is not a JSON array")
+
+    values: list[CategoryValue] = []
+    for index, raw_item in enumerate(payload):
+        if not isinstance(raw_item, dict):
+            raise GallicaResponseError(f"Categories item {index} is not a JSON object")
+        category = raw_item.get("value")
+        clean_value = raw_item.get("cleanValue")
+        count = raw_item.get("howMany")
+        raw_label = raw_item.get("libelleValue")
+        if not isinstance(category, str) or not category:
+            raise GallicaResponseError(f"Categories item {index} has invalid value")
+        if not isinstance(clean_value, str):
+            raise GallicaResponseError(f"Categories item {index} has invalid cleanValue")
+        if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+            raise GallicaResponseError(f"Categories item {index} has invalid howMany")
+        if raw_label is not None and not isinstance(raw_label, str):
+            raise GallicaResponseError(f"Categories item {index} has invalid libelleValue")
+        values.append(
+            CategoryValue(
+                category=category,
+                clean_value=clean_value,
+                approximate_count=count,
+                label=raw_label or None,
+            )
+        )
+    return Categories(query=query, values=tuple(values), raw_json=response.text)
 
 
 def _validate_alto(response: httpx.Response) -> bytes:
@@ -167,6 +206,16 @@ class Gallica:
             },
         )
         return parse_sru(response.text, fallback_query=query)
+
+    def categories(self, query: str) -> Categories:
+        """Return Categories refinements for an SRU/CQL query."""
+        if not query.strip():
+            raise ValueError("query must not be empty")
+        response = self._transport.get(
+            f"{BASE_URL}/services/Categories",
+            params={"SRU": f"({query})"},
+        )
+        return _validate_categories(response, query=query)
 
     def search_all(
         self,
