@@ -91,20 +91,30 @@ def _validate_text(response: httpx.Response) -> str:
     return response.text
 
 
+def _looks_like_tei(content: bytes) -> bool:
+    prefix = content.lstrip()[:4096]
+    return re.search(br"<(?:[A-Za-z0-9_.-]+:)?TEI(?:\.2)?(?:\s|>)", prefix, re.IGNORECASE) is not None
+
+
 def _validate_toc(response: httpx.Response) -> TocDocument:
     if not response.content.strip():
         raise GallicaResponseError("Toc response is empty")
     if _looks_like_html(response.content):
-        return TocDocument(format="html", raw=response.text)
+        return TocDocument(format="html", raw=response.text, well_formed=None)
+
+    looks_tei = _looks_like_tei(response.content)
     try:
         root = ET.fromstring(response.content)
     except ET.ParseError as exc:
-        raise GallicaResponseError("Toc response is neither valid HTML nor XML") from exc
+        if looks_tei:
+            return TocDocument(format="tei", raw=response.text, well_formed=False)
+        raise GallicaResponseError("Toc response is neither recognizable HTML nor TEI") from exc
+
     if _local_name(root.tag) not in {"TEI.2", "TEI"}:
         raise GallicaResponseError(
             f"Toc response has unexpected XML root {_local_name(root.tag)!r}"
         )
-    return TocDocument(format="tei", raw=response.text)
+    return TocDocument(format="tei", raw=response.text, well_formed=True)
 
 
 class Gallica:
