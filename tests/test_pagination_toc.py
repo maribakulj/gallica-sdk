@@ -60,15 +60,33 @@ def test_toc_accepts_legacy_html() -> None:
     gallica = Gallica(transport=StaticTransport({"/services/Toc": response}))  # type: ignore[arg-type]
     toc = gallica.document("bpt6k1").toc()
     assert toc.format == "html"
+    assert toc.well_formed is None
     assert "table" in toc.raw
 
 
-def test_toc_accepts_tei_xml() -> None:
+def test_toc_accepts_well_formed_tei_xml() -> None:
     response = _response(b"<TEI.2><text><body><div0 type='TdM'/></body></text></TEI.2>")
     gallica = Gallica(transport=StaticTransport({"/services/Toc": response}))  # type: ignore[arg-type]
     toc = gallica.document("bpt6k1").toc()
     assert toc.format == "tei"
+    assert toc.well_formed is True
     assert "TEI.2" in toc.raw
+
+
+def test_toc_preserves_recognizable_but_malformed_tei() -> None:
+    response = _response(b"<?xml version='1.0'?><TEI.2><text>unescaped & value</text></TEI.2>")
+    gallica = Gallica(transport=StaticTransport({"/services/Toc": response}))  # type: ignore[arg-type]
+    toc = gallica.document("bpt6k1").toc()
+    assert toc.format == "tei"
+    assert toc.well_formed is False
+    assert "unescaped & value" in toc.raw
+
+
+def test_toc_rejects_unrecognized_malformed_payload() -> None:
+    response = _response(b"<results><broken")
+    gallica = Gallica(transport=StaticTransport({"/services/Toc": response}))  # type: ignore[arg-type]
+    with pytest.raises(GallicaResponseError, match="neither recognizable HTML nor TEI"):
+        gallica.document("bpt6k1").toc()
 
 
 def test_toc_rejects_unexpected_xml() -> None:
