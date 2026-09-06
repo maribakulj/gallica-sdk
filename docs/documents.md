@@ -54,21 +54,25 @@ Le XML d'origine reste disponible dans `pagination.raw_xml`.
 ```python
 toc = document.toc()
 print(toc.format)
+print(toc.well_formed)
 print(toc.raw[:200])
 ```
 
-Le service Gallica possède deux représentations historiques : certaines numérisations renvoient une table des matières HTML, d'autres un document XML TEI. Le SDK les distingue donc explicitement :
+Le service Gallica possède deux représentations historiques : certaines numérisations renvoient une table des matières HTML, d'autres une représentation TEI. Le SDK les distingue donc explicitement :
 
 ```python
 if toc.format == "html":
-    # contenu HTML historique
+    # contenu HTML historique ; well_formed vaut None
+    ...
+elif toc.format == "tei" and toc.well_formed:
+    # TEI directement parsable comme XML
     ...
 elif toc.format == "tei":
-    # contenu XML TEI
+    # TEI identifiable mais XML amont mal formé ; le brut est préservé
     ...
 ```
 
-Le SDK ne les force pas dans un modèle commun potentiellement destructeur. `toc.raw` conserve la représentation amont exacte ; les traitements spécialisés peuvent ensuite parser HTML ou TEI selon leur besoin.
+Le SDK ne force pas HTML et TEI dans un modèle commun potentiellement destructeur. Il ne répare pas non plus silencieusement un TEI mal formé : `toc.raw` conserve exactement la représentation reçue et `toc.well_formed` indique si cette représentation TEI est directement parsable. Cette distinction est nécessaire parce que le service public peut actuellement livrer un document explicitement TEI dont le XML n'est pas strictement bien formé.
 
 `pagination.has_toc` et `pagination.toc_location` permettent de savoir si le service Pagination signale une table des matières et à quelle vue elle est associée, sans télécharger le TOC lui-même.
 
