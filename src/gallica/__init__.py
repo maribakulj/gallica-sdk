@@ -42,10 +42,10 @@ from .reference import ReferenceSpec, programmable_reference
 
 __all__ = [
     "CATEGORY_CQL_FIELDS",
-    "Categories",
-    "CategoryValue",
     "CapabilityEvidence",
     "CapabilitySpec",
+    "Categories",
+    "CategoryValue",
     "ContentSearchItem",
     "ContentSearchMatch",
     "ContentSearchResults",
