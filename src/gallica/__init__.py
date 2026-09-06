@@ -28,7 +28,10 @@ from .models import (
     ContentSearchResults,
     DocumentMetadata,
     DublinCoreRecord,
+    Pagination,
+    PaginationPage,
     SearchResults,
+    TocDocument,
 )
 from .operational import OperationalContract, operational_contract, operational_contracts
 from .periodical import Periodical
@@ -57,9 +60,12 @@ __all__ = [
     "GallicaResponseError",
     "OperationalContract",
     "Page",
+    "Pagination",
+    "PaginationPage",
     "Periodical",
     "ReferenceSpec",
     "SearchResults",
+    "TocDocument",
     "__version__",
     "build_evidence_attestation",
     "capabilities",
