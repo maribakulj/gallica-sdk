@@ -35,7 +35,7 @@ Le mot *approximate* est volontaire : la documentation BnF indique que `howMany`
 
 Le service retourne au plus 20 valeurs par critère. Certains critères comme `language`, `provenance`, `date` et `creator` peuvent donc être incomplets. Les catégories plus fermées comme `typedoc`, `free_access` et `nqamoyen` sont documentées comme exhaustives dans ce cadre.
 
-Le nom du critère Categories n'est pas toujours le champ CQL correspondant. Le SDK expose le mapping officiel via `item.cql_field` et `CATEGORY_CQL_FIELDS`, par exemple :
+Le nom du critère Categories n'est pas toujours le champ CQL correspondant. Le SDK expose uniquement les mappings explicitement documentés via `item.cql_field` et `CATEGORY_CQL_FIELDS`, par exemple :
 
 ```python
 language.cql_field   # "dc.language"
@@ -43,9 +43,15 @@ typedoc.cql_field    # "dc.type"
 creator.cql_field    # "dc.creator"
 ```
 
-Une catégorie inconnue reste conservée mais son `cql_field` vaut `None` : le SDK préfère signaler qu'il ne connaît pas le mapping plutôt que d'en inventer un.
+La documentation liste aussi une catégorie `dewey`, mais sa table de mapping Categories → CQL ne précise pas de correspondance. Le SDK n'en invente donc pas : comme pour toute catégorie sans mapping vérifié, `cql_field` vaut `None`.
 
 `facets.raw_json` conserve la réponse JSON originale.
+
+### Limitation d'accès public observée
+
+Le 6 septembre 2026, l'URL Categories donnée par la documentation BnF renvoyait HTML/403 depuis les runners CI publics et depuis un accès externe indépendant, alors que SRU continuait de fonctionner. La référence programmable marque donc actuellement `Categories` comme `environment-limited`, et non `live-validated`.
+
+Si Gallica renvoie une page HTML à la place du JSON attendu, le SDK lève `GallicaResponseError` au lieu de tenter de la parser comme des facettes. Les tests déterministes couvrent le contrat JSON documenté ; le test live accepte soit une réponse JSON valide, soit ce rejet explicite tant que l'accès machine froid n'est pas reproductible.
 
 ## Dublin Core répétable
 
