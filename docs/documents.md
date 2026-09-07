@@ -163,8 +163,15 @@ Le SDK retourne les octets XML afin de ne pas imposer un modèle ALTO incomplet 
 
 ```python
 info = page.iiif_info()
-print(info["width"], info["height"])
+print(info.version)
+print(info.identifier)
+print(info.width, info.height)
+print(info.profiles)
 ```
+
+`Page.iiif_info()` retourne un `IIIFImageInfo` plutôt qu'un dictionnaire générique. Le modèle expose la version détectée (`"2"`, `"3"` ou `"unknown"`), l'identifiant, les contextes, le protocole, les URI de profils annoncées et les dimensions positives de l'image. Le JSON original est conservé dans `info.raw_json`.
+
+La détection de version utilise les marqueurs explicites de `@context` et `profile`. Si ces marqueurs se contredisent, le SDK rejette le payload. Lorsqu'une version est annoncée, l'identifiant correspondant est requis : `@id` pour Image API v2 et `id` pour v3. Un `info.json` historique sans marqueur de version mais avec des dimensions valides reste accepté avec `version="unknown"` afin de ne pas inventer une incompatibilité là où l'amont reste ambigu.
 
 ### Image IIIF
 
