@@ -20,6 +20,7 @@ EXPECTED_DOCS = (
     "docs/cli.md",
     "docs/architecture.md",
     "docs/capabilities.md",
+    "docs/public-api.md",
     "docs/agents.md",
     "docs/evidence.md",
     "docs/release-readiness.md",
