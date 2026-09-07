@@ -58,7 +58,10 @@ def test_document_and_page_vertical_slice() -> None:
 
     page = doc.page(3)
     assert page.alto() == b"<alto/>"
-    assert page.iiif_info()["width"] == 10784
+    info = page.iiif_info()
+    assert info.width == 10784
+    assert info.height == 7200
+    assert info.version == "unknown"
     assert page.image() == b"\xff\xd8\xffjpeg"
 
     image_call = next(call for call in transport.calls if "/iiif/" in call[0] and not call[0].endswith("info.json"))
