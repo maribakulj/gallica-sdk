@@ -29,6 +29,7 @@ EXPECTED_DOCS = (
 EXPECTED_NOTEBOOKS = (
     "notebooks/01_search_and_metadata.ipynb",
     "notebooks/02_resumable_corpus.ipynb",
+    "notebooks/03_document_structure_and_iiif.ipynb",
 )
 
 
