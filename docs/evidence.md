@@ -1,8 +1,8 @@
 # Validation evidence and provenance
 
-`gallica-sdk` distinguishes three things that are easy to confuse: implementation, evidence declaration and validation attestation.
+`gallica-sdk` distinguishes four things that are easy to conflate: implementation, evidence declaration, live observation and validation attestation.
 
-A capability may exist in Python. The programmable reference then links network-facing behavior to a stable live-test evidence ID. A successful CI run can finally emit an attestation saying that those declared tests actually passed for one exact commit and one exact GitHub Actions run.
+A capability may exist in Python. The programmable reference links network-facing behavior to a stable live-test evidence ID. During a live run, each declared test records what the public service actually did from that runner. Only after the complete suite passes can CI emit an attestation binding those observations to one exact commit and one exact GitHub Actions run.
 
 The declaration graph is available through:
 
@@ -21,9 +21,18 @@ Each evidence item has a stable ID, a kind, a status and a repository target. Cu
 - `live-test`: a test that calls public Gallica services;
 - `example`: a checked-in workflow intended for humans and coding agents.
 
-The historical `observed_at`, commit and run fields still present in schema 2.0 describe an older recorded observation and are retained for compatibility. They are no longer treated as the current validation state by `evidence_freshness()`.
+Declarations are intentionally observation-free. They do not contain a CI timestamp, commit or run URL, because those facts belong to one execution rather than to the capability definition. The published schema still accepts the old optional observation fields so older schema-2.0 reference files remain readable, but the canonical reference no longer writes them.
 
-This distinction matters because a checked-in Python constant cannot magically become newer when CI runs. Humans have attempted similar tricks with timestamps for decades; clocks remain unimpressed.
+## Live observations
+
+When `GALLICA_LIVE_EVIDENCE_PATH` is set, every declared live test writes one JSONL observation after its assertions have succeeded. The observation records:
+
+- the stable evidence ID;
+- the observation timestamp;
+- `service_outcome` as either `operational` or `environment-limited`;
+- an optional detail explaining the limitation.
+
+This distinction matters for tests such as Categories and plain OCR. A test can pass because the SDK correctly rejects an HTML/403 or anti-bot response while the upstream service is still not reproducibly machine-accessible from that runner. A green test therefore does not automatically mean an operational service.
 
 ## CI attestations
 
@@ -33,17 +42,22 @@ After the complete live suite passes, CI runs:
 python scripts/generate_evidence_attestation.py
 ```
 
-and uploads `evidence-attestation.json` as a GitHub Actions artifact. The attestation contains:
+The generator reads the JSONL observations and refuses to emit an attestation if any declared live-test evidence ID is missing, duplicated or unknown. The uploaded `evidence-attestation.json` uses schema 2.0 and contains:
 
 - the exact commit SHA;
 - the exact Actions run URL;
-- generation/observation timestamp;
-- one `passed` record for every declared `live-test` evidence ID;
-- the confidence label associated with the declaration.
+- generation timestamp;
+- the observation timestamp for each live test;
+- `test_outcome: passed` for the completed test;
+- the separately recorded `service_outcome`;
+- the confidence label associated with the declaration;
+- optional limitation detail.
 
-No attestation is generated when the live-test step fails.
+CI uploads both the final attestation and the raw `live-evidence-results.jsonl` observations. No attestation is generated when the live-test step fails.
 
-The normal CI live job emits such an artifact for validated PR/push runs. A dedicated `Live evidence` workflow also runs every Sunday and can be started manually, so external service changes can be detected even when nobody commits code.
+The normal CI live job emits the artifact for validated PR/push runs. A dedicated `Live evidence` workflow also runs every Sunday and can be started manually, so external service changes can be detected even when nobody commits code.
+
+Schema-1.0 attestations remain loadable for compatibility. Because they only stored a generic `outcome`, their service outcome is normalized to `unknown` and they are not promoted to current operational evidence.
 
 ## Freshness
 
@@ -63,10 +77,15 @@ from gallica import evidence_freshness, load_evidence_attestation
 
 attestation = load_evidence_attestation("evidence-attestation.json")
 for item in evidence_freshness(attestation=attestation, as_of=date(2026, 9, 10)):
-    print(item["id"], item["state"], item["age_days"])
+    print(
+        item["id"],
+        item["state"],
+        item["age_days"],
+        item["service_outcome"],
+    )
 ```
 
-Possible states are `fresh`, `stale`, `failed`, `unknown` and `not-applicable`. A successful attestation becomes stale after the declaration's freshness window, currently 14 days for the live tests. That window is project policy, not a BnF guarantee.
+Possible freshness states remain `fresh`, `stale`, `failed`, `unknown` and `not-applicable`. `service_outcome` is reported separately, so a recent `environment-limited` observation is still a fresh observation without being mislabeled as operational. A successful current attestation becomes stale after the declaration's freshness window, currently 14 days for the live tests. That window is project policy, not a BnF guarantee.
 
 Operational contracts accept the same attestation:
 
@@ -76,7 +95,7 @@ from gallica import operational_contract
 contract = operational_contract("page_alto", attestation=attestation)
 ```
 
-Without it, the contract still knows its services and evidence targets, but reports live freshness as `unknown` rather than pretending a historical snapshot is current.
+Without it, the contract still knows its services and evidence targets, but reports live freshness as `unknown`.
 
 ## Capability links
 
