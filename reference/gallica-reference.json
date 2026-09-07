@@ -7,17 +7,105 @@
   "capabilities_export": "python scripts/export_capabilities.py",
   "operational_contracts_export": "python scripts/export_operational_contracts.py",
   "services": [
-    {"id": "sru", "name": "Gallica SRU 1.2", "kind": "search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/SRU", "documentation": ["https://api.bnf.fr/"], "notes": ["maximumRecords is capped at 50 by the SDK"]},
-    {"id": "categories", "name": "Gallica Categories", "kind": "search-refinement", "status": "environment-limited", "base_url": "https://gallica.bnf.fr/services/Categories", "documentation": ["https://api.bnf.fr/fr/api-gallica-de-recherche"], "notes": ["accepts an SRU/CQL query through the SRU parameter", "returns JSON category values with approximate howMany counts when machine access is allowed", "at most 20 values are returned per category and some categories are not exhaustive", "API category names do not always match their CQL refinement fields", "public cold runners and external fetches returned HTML/403 on 2026-09-06; the SDK rejects that response instead of treating it as Categories JSON"]},
-    {"id": "oai-record", "name": "Gallica OAIRecord", "kind": "metadata", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/OAIRecord", "documentation": ["https://api.bnf.fr/"], "notes": ["Dublin Core values may repeat"]},
-    {"id": "pagination", "name": "Gallica Pagination", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Pagination", "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["returns navigation metadata plus per-view logical page labels", "nbVueImages is exposed as Pagination.image_views"]},
-    {"id": "toc", "name": "Gallica Toc", "kind": "structure", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Toc", "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["legacy digitizations may return HTML", "newer digitizations return TEI XML", "the SDK preserves the upstream representation instead of forcing a lossy common model"]},
-    {"id": "issues", "name": "Gallica Issues", "kind": "periodicals", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/Issues", "documentation": ["https://api.bnf.fr/"], "notes": ["dated issue resolution uses dayOfYear"]},
-    {"id": "content-search", "name": "Gallica ContentSearch", "kind": "ocr-search", "status": "live-validated", "base_url": "https://gallica.bnf.fr/services/ContentSearch", "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["the service returns at most 10 items per response and startResult paginates further results", "with page supplied, p_width/p_height and altoidstring rectangles locate OCR matches in master-image coordinates"]},
-    {"id": "text", "name": "Gallica plain OCR text", "kind": "ocr", "status": "environment-limited", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ["https://api.bnf.fr/fr/node/232", "https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["public quota documented as 5 requests/minute", "texteBrut legitimately returns an HTML representation containing OCR text", "public cold CI runners were redirected to Gallica's anti-bot challenge on 2026-09-05; the SDK detects and rejects that challenge"]},
-    {"id": "alto", "name": "Gallica ALTO", "kind": "ocr", "status": "live-validated", "base_url": "https://gallica.bnf.fr/RequestDigitalElement", "documentation": ["https://api.bnf.fr/"], "notes": ["views are 1-based"]},
-    {"id": "iiif-image", "name": "Gallica IIIF Image", "kind": "image", "status": "live-validated", "base_url": "https://gallica.bnf.fr/iiif/", "documentation": ["https://api.bnf.fr/", "https://api.bnf.fr/fr/node/232"], "notes": ["1000px is the conservative SDK default", "width above 1000px is handled as high definition"]},
-    {"id": "pdf", "name": "Gallica PDF representation", "kind": "document", "status": "not-supported", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ["https://api.bnf.fr/fr/node/232"], "notes": ["historical automated URL forms returned HTML in public CI validation", "the SDK intentionally exposes no pdf() method"]}
+    {
+      "id": "sru",
+      "name": "Gallica SRU 1.2",
+      "kind": "search",
+      "status": "live-validated",
+      "base_url": "https://gallica.bnf.fr/SRU",
+      "documentation": ["https://api.bnf.fr/"],
+      "notes": ["maximumRecords is capped at 50 by the SDK"]
+    },
+    {
+      "id": "categories",
+      "name": "Gallica Categories",
+      "kind": "search-refinement",
+      "status": "environment-limited",
+      "base_url": "https://gallica.bnf.fr/services/Categories",
+      "documentation": ["https://api.bnf.fr/fr/api-gallica-de-recherche"],
+      "notes": ["accepts an SRU/CQL query through the SRU parameter", "returns JSON category values with approximate howMany counts when machine access is allowed", "at most 20 values are returned per category and some categories are not exhaustive", "API category names do not always match their CQL refinement fields", "public cold runners and external fetches returned HTML/403 on 2026-09-06; the SDK rejects that response instead of treating it as Categories JSON"]
+    },
+    {
+      "id": "oai-record",
+      "name": "Gallica OAIRecord",
+      "kind": "metadata",
+      "status": "live-validated",
+      "base_url": "https://gallica.bnf.fr/services/OAIRecord",
+      "documentation": ["https://api.bnf.fr/"],
+      "notes": ["Dublin Core values may repeat"]
+    },
+    {
+      "id": "pagination",
+      "name": "Gallica Pagination",
+      "kind": "structure",
+      "status": "live-validated",
+      "base_url": "https://gallica.bnf.fr/services/Pagination",
+      "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"],
+      "notes": ["returns navigation metadata plus per-view logical page labels", "nbVueImages is exposed as Pagination.image_views"]
+    },
+    {
+      "id": "toc",
+      "name": "Gallica Toc",
+      "kind": "structure",
+      "status": "live-validated",
+      "base_url": "https://gallica.bnf.fr/services/Toc",
+      "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"],
+      "notes": ["legacy digitizations may return HTML", "newer digitizations return TEI XML", "the SDK preserves the upstream representation instead of forcing a lossy common model"]
+    },
+    {
+      "id": "issues",
+      "name": "Gallica Issues",
+      "kind": "periodicals",
+      "status": "live-validated",
+      "base_url": "https://gallica.bnf.fr/services/Issues",
+      "documentation": ["https://api.bnf.fr/"],
+      "notes": ["dated issue resolution uses dayOfYear"]
+    },
+    {
+      "id": "content-search",
+      "name": "Gallica ContentSearch",
+      "kind": "ocr-search",
+      "status": "live-validated",
+      "base_url": "https://gallica.bnf.fr/services/ContentSearch",
+      "documentation": ["https://api.bnf.fr/fr/api-document-de-gallica"],
+      "notes": ["the service returns at most 10 items per response and startResult paginates further results", "with page supplied, p_width/p_height and altoidstring rectangles locate OCR matches in master-image coordinates"]
+    },
+    {
+      "id": "text",
+      "name": "Gallica plain OCR text",
+      "kind": "ocr",
+      "status": "environment-limited",
+      "base_url": "https://gallica.bnf.fr/ark:/12148/",
+      "documentation": ["https://api.bnf.fr/fr/node/232", "https://api.bnf.fr/fr/api-document-de-gallica"],
+      "notes": ["public quota documented as 5 requests/minute", "texteBrut legitimately returns an HTML representation containing OCR text", "public cold CI runners were redirected to Gallica's anti-bot challenge on 2026-09-05; the SDK detects and rejects that challenge"]
+    },
+    {
+      "id": "alto",
+      "name": "Gallica ALTO",
+      "kind": "ocr",
+      "status": "live-validated",
+      "base_url": "https://gallica.bnf.fr/RequestDigitalElement",
+      "documentation": ["https://api.bnf.fr/"],
+      "notes": ["views are 1-based"]
+    },
+    {
+      "id": "iiif-image",
+      "name": "Gallica IIIF Image",
+      "kind": "image",
+      "status": "live-validated",
+      "base_url": "https://gallica.bnf.fr/iiif/",
+      "documentation": ["https://api.bnf.fr/", "https://api.bnf.fr/fr/node/232"],
+      "notes": ["1000px is the conservative SDK default", "width above 1000px is handled as high definition"]
+    },
+    {
+      "id": "pdf",
+      "name": "Gallica PDF representation",
+      "kind": "document",
+      "status": "not-supported",
+      "base_url": "https://gallica.bnf.fr/ark:/12148/",
+      "documentation": ["https://api.bnf.fr/fr/node/232"],
+      "notes": ["historical automated URL forms returned HTML in public CI validation", "the SDK intentionally exposes no pdf() method"]
+    }
   ],
   "capability_index": [
     {"id": "document", "call": "Gallica.document"},
@@ -41,12 +129,12 @@
     {"id": "corpus_fetch", "call": "Corpus.fetch"}
   ],
   "evidence": [
-    {"id": "live.vertical_slice", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_vertical_slice", "description": "Public smoke validation for SRU, structured Pagination, Toc, OAIRecord, ALTO and IIIF image access.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
-    {"id": "live.document_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public validation for ContentSearch excerpts/geometry/pagination, dated Issues resolution and safe texteBrut behavior, including explicit anti-bot challenge detection when cold runners are blocked.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
-    {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata artifacts, provenance-aware resume and manifest stability.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
-    {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
-    {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
-    {"id": "live.search_categories", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_categories_exposes_search_refinements", "description": "Public validation for Categories search refinements, approximate counts and API-category to CQL-field mappings.", "observed_at": "2026-09-04T16:42:34Z", "observed_commit": "858dc473b9cd38cade788493f15ff9dde9e77985", "observed_run": "https://github.com/maribakulj/gallica-sdk/actions/runs/33896647794", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.vertical_slice", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_vertical_slice", "description": "Public smoke validation for SRU, structured Pagination, Toc, OAIRecord, ALTO and IIIF image access.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.document_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public validation for ContentSearch excerpts/geometry/pagination, dated Issues resolution and safe texteBrut behavior, including explicit anti-bot challenge detection when cold runners are blocked.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata artifacts, provenance-aware resume and manifest stability.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.search_categories", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_categories_exposes_search_refinements", "description": "Public validation for Categories search refinements, approximate counts and API-category to CQL-field mappings.", "freshness_days": 14, "confidence": "high"},
     {"id": "example.search_to_corpus", "kind": "example", "status": "checked-in", "target": "examples/search_to_corpus.py", "description": "Minimal search-to-corpus workflow intended for humans and coding agents.", "confidence": "reference"}
   ],
   "capability_evidence": [
@@ -73,8 +161,9 @@
   "invariants": [
     "A network capability is not marked live-validated without a relevant public live test.",
     "Environment-limited services remain explicit when upstream access controls prevent reproducible cold-runner validation.",
-    "Every live-test evidence record carries an observation timestamp, tested commit and CI run.",
-    "Evidence freshness is evaluated separately from support status and can become stale without changing the historical observation.",
+    "Live-test evidence declarations are observation-free; run-specific provenance belongs to CI attestations.",
+    "Every current attestation record carries an observation timestamp, tested commit, CI run, test outcome and service outcome.",
+    "Evidence freshness is evaluated separately from service outcome and support status.",
     "Every service/evidence reference in capability_evidence must resolve in this manifest.",
     "Every public capability must have exactly one capability_evidence record.",
     "Operational contracts resolve canonical capabilities, services and evidence rather than duplicating them as independent truth.",
