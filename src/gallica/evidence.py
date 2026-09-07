@@ -74,6 +74,7 @@ EVIDENCE: tuple[EvidenceSpec, ...] = (
     {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", "freshness_days": 14, "confidence": "high"},
     {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus.", "freshness_days": 14, "confidence": "high"},
     {"id": "live.search_categories", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_categories_exposes_search_refinements", "description": "Public validation for Categories search refinements, approximate counts and API-category to CQL-field mappings.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.iiif_presentation", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_iiif_presentation_manifest", "description": "Public validation for IIIF Presentation manifest access and explicit protocol-version detection.", "freshness_days": 14, "confidence": "high"},
     {"id": "example.search_to_corpus", "kind": "example", "status": "checked-in", "target": "examples/search_to_corpus.py", "description": "Minimal search-to-corpus workflow intended for humans and coding agents.", "confidence": "reference"},
 )
 
@@ -89,6 +90,7 @@ CAPABILITY_EVIDENCE: tuple[CapabilityEvidence, ...] = (
     {"capability": "document_pagination", "services": ("pagination",), "evidence": ("live.vertical_slice",), "example": None},
     {"capability": "document_page_count", "services": ("pagination",), "evidence": ("live.vertical_slice",), "example": None},
     {"capability": "document_toc", "services": ("toc",), "evidence": ("live.vertical_slice",), "example": None},
+    {"capability": "document_iiif_manifest", "services": ("iiif-presentation",), "evidence": ("live.iiif_presentation",), "example": None},
     {"capability": "document_text", "services": ("text",), "evidence": ("live.text_access",), "example": None},
     {"capability": "content_search", "services": ("content-search",), "evidence": ("live.document_access",), "example": None},
     {"capability": "content_search_all", "services": ("content-search",), "evidence": ("live.document_access",), "example": None},
