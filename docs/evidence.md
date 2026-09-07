@@ -2,7 +2,7 @@
 
 `gallica-sdk` distinguishes four things that are easy to conflate: implementation, evidence declaration, live observation and validation attestation.
 
-A capability may exist in Python. The programmable reference links network-facing behavior to a stable live-test evidence ID. During a live run, each declared test records what the public service actually did from that runner. Only after the complete suite passes can CI emit an attestation binding those observations to one exact commit and one exact GitHub Actions run.
+A capability may exist in Python. The programmable reference links network-facing behavior to a stable live-test evidence ID. During a live run, the suite records what the public service actually did for every declared live-test evidence ID. Only after the complete suite passes can CI emit an attestation binding those observations to one exact commit and one exact GitHub Actions run.
 
 The declaration graph is available through:
 
@@ -25,14 +25,14 @@ Declarations are intentionally observation-free. They do not contain a CI timest
 
 ## Live observations
 
-When `GALLICA_LIVE_EVIDENCE_PATH` is set, every declared live test writes one JSONL observation after its assertions have succeeded. The observation records:
+When `GALLICA_LIVE_EVIDENCE_PATH` is set, the live suite writes one JSONL observation for every declared live-test evidence ID after the relevant assertions have succeeded. One pytest function may record more than one evidence ID when it validates independently classified services. The observation records:
 
 - the stable evidence ID;
 - the observation timestamp;
 - `service_outcome` as either `operational` or `environment-limited`;
 - an optional detail explaining the limitation.
 
-This distinction matters for tests such as Categories and plain OCR. A test can pass because the SDK correctly rejects an HTML/403 or anti-bot response while the upstream service is still not reproducibly machine-accessible from that runner. A green test therefore does not automatically mean an operational service.
+This distinction matters for tests such as Categories and plain OCR. A test can pass because the SDK correctly rejects an HTML/403 or anti-bot response while the upstream service is still not reproducibly machine-accessible from that runner. A green test therefore does not automatically mean an operational service. Plain OCR has its own `live.text_access` evidence ID so an anti-bot response does not incorrectly downgrade ContentSearch or Issues validated by the same pytest function.
 
 ## CI attestations
 
@@ -47,8 +47,8 @@ The generator reads the JSONL observations and refuses to emit an attestation if
 - the exact commit SHA;
 - the exact Actions run URL;
 - generation timestamp;
-- the observation timestamp for each live test;
-- `test_outcome: passed` for the completed test;
+- the observation timestamp for each live evidence ID;
+- `test_outcome: passed` for the completed validation;
 - the separately recorded `service_outcome`;
 - the confidence label associated with the declaration;
 - optional limitation detail.
