@@ -4,7 +4,7 @@ import re
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable, Iterator
 from datetime import date, timedelta
-from typing import Self, cast
+from typing import Literal, Self, cast
 from urllib.parse import quote
 
 import httpx
@@ -166,8 +166,10 @@ def _iiif_contexts(raw_context: object) -> tuple[str, ...]:
     raise GallicaResponseError("IIIF Presentation manifest has invalid @context")
 
 
-def _iiif_version_from_context(contexts: tuple[str, ...]) -> str | None:
-    versions: set[str] = set()
+def _iiif_version_from_context(
+    contexts: tuple[str, ...],
+) -> Literal["2", "3"] | None:
+    versions: set[Literal["2", "3"]] = set()
     for context in contexts:
         lowered = context.lower()
         if "/presentation/2/" in lowered:
@@ -179,7 +181,9 @@ def _iiif_version_from_context(contexts: tuple[str, ...]) -> str | None:
     return next(iter(versions), None)
 
 
-def _iiif_version_from_structure(payload: dict[str, object]) -> str | None:
+def _iiif_version_from_structure(
+    payload: dict[str, object],
+) -> Literal["2", "3"] | None:
     is_v2 = payload.get("@type") == "sc:Manifest" or "sequences" in payload
     is_v3 = payload.get("type") == "Manifest" or "items" in payload
     if is_v2 and is_v3:
@@ -206,7 +210,13 @@ def _validate_iiif_manifest(response: httpx.Response) -> IIIFPresentationManifes
     structure_version = _iiif_version_from_structure(manifest)
     if context_version is not None and structure_version is not None and context_version != structure_version:
         raise GallicaResponseError("IIIF Presentation manifest context conflicts with its structure")
-    version = context_version or structure_version or "unknown"
+    version: Literal["2", "3", "unknown"]
+    if context_version is not None:
+        version = context_version
+    elif structure_version is not None:
+        version = structure_version
+    else:
+        version = "unknown"
 
     identifier: str | None
     canvas_count: int | None
@@ -245,7 +255,7 @@ def _validate_iiif_manifest(response: httpx.Response) -> IIIFPresentationManifes
         canvas_count = None
 
     return IIIFPresentationManifest(
-        version=cast("str", version),
+        version=version,
         identifier=identifier,
         context=contexts,
         canvas_count=canvas_count,
