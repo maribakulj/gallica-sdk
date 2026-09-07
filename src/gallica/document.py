@@ -8,6 +8,7 @@ from .models import (
     ContentSearchItem,
     ContentSearchResults,
     DocumentMetadata,
+    IIIFPresentationManifest,
     Pagination,
     TocDocument,
 )
@@ -36,6 +37,10 @@ class Document:
     def toc(self) -> TocDocument:
         """Return the table of contents as legacy HTML or TEI XML."""
         return self._gallica._toc(self.ark)
+
+    def iiif_manifest(self) -> IIIFPresentationManifest:
+        """Return the IIIF Presentation manifest with explicit version detection."""
+        return self._gallica._iiif_manifest(self.ark)
 
     def text(self) -> str:
         """Return the document OCR text through Gallica's .texteBrut representation."""
