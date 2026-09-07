@@ -7,9 +7,22 @@ import pytest
 from gallica import (
     build_evidence_attestation,
     capabilities,
+    evidence,
     operational_contract,
     operational_contracts,
 )
+
+
+def _observations() -> tuple[dict[str, str], ...]:
+    return tuple(
+        {
+            "evidence_id": item["id"],
+            "service_outcome": "operational",
+            "observed_at": "2026-09-05T10:00:00Z",
+        }
+        for item in evidence()
+        if item["kind"] == "live-test"
+    )
 
 
 def test_operational_contracts_cover_every_capability_once() -> None:
@@ -43,11 +56,13 @@ def test_attestation_resolves_current_operational_freshness() -> None:
     attestation = build_evidence_attestation(
         commit="b" * 40,
         run_url="https://github.com/example/repo/actions/runs/99",
-        observed_at="2026-09-05T10:00:00Z",
+        observations=_observations(),
+        generated_at="2026-09-05T10:01:00Z",
     )
     contract = operational_contract("page_alto", attestation=attestation)
     assert contract["freshness"]
     assert all(item["state"] == "fresh" for item in contract["freshness"])
+    assert all(item["service_outcome"] == "operational" for item in contract["freshness"])
 
 
 def test_resolved_page_alto_contract_is_self_contained() -> None:
