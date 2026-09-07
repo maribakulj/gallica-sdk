@@ -13,6 +13,7 @@ The project follows semantic versioning once a first public release is published
 - structured `Document.pagination()` access with navigation metadata, image/audio view counts and logical page labels while preserving raw XML;
 - `Document.toc()` with explicit preservation of legacy HTML versus TEI XML table-of-contents representations;
 - `Document.iiif_manifest()` with explicit IIIF Presentation v2/v3 detection, version-specific validation, canvas counts and raw JSON preservation without lossy v2→v3 normalization;
+- typed `IIIFImageInfo` returned by `Page.iiif_info()`, with explicit Image API version detection, identifier, contexts, protocol, advertised profile URIs, positive dimensions and raw JSON preservation;
 - `Document`, `Page`, `Periodical` and resumable `Corpus` abstractions;
 - lazy SRU pagination and search-result handoff to corpus workflows;
 - JSONL export for search results;
