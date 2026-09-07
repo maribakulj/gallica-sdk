@@ -66,7 +66,8 @@ _SERVICE_OUTCOMES = frozenset({"operational", "environment-limited"})
 
 EVIDENCE: tuple[EvidenceSpec, ...] = (
     {"id": "live.vertical_slice", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_vertical_slice", "description": "Public smoke validation for SRU, structured Pagination, Toc, OAIRecord, ALTO and IIIF image access.", "freshness_days": 14, "confidence": "high"},
-    {"id": "live.document_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public validation for ContentSearch excerpts/geometry/pagination, dated Issues resolution and safe texteBrut behavior, including explicit anti-bot challenge detection when cold runners are blocked.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.document_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public validation for ContentSearch excerpts/geometry/pagination and dated Issues resolution.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.text_access", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_phase1_document_access", "description": "Public validation for plain OCR texteBrut behavior, including explicit anti-bot challenge detection when cold runners are blocked.", "freshness_days": 14, "confidence": "high"},
     {"id": "live.corpus_document", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_v1", "description": "Public corpus validation for metadata artifacts, provenance-aware resume and manifest stability.", "freshness_days": 14, "confidence": "high"},
     {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", "freshness_days": 14, "confidence": "high"},
     {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus.", "freshness_days": 14, "confidence": "high"},
@@ -86,15 +87,15 @@ CAPABILITY_EVIDENCE: tuple[CapabilityEvidence, ...] = (
     {"capability": "document_pagination", "services": ("pagination",), "evidence": ("live.vertical_slice",), "example": None},
     {"capability": "document_page_count", "services": ("pagination",), "evidence": ("live.vertical_slice",), "example": None},
     {"capability": "document_toc", "services": ("toc",), "evidence": ("live.vertical_slice",), "example": None},
-    {"capability": "document_text", "services": ("text",), "evidence": ("live.document_access",), "example": None},
+    {"capability": "document_text", "services": ("text",), "evidence": ("live.text_access",), "example": None},
     {"capability": "content_search", "services": ("content-search",), "evidence": ("live.document_access",), "example": None},
     {"capability": "content_search_all", "services": ("content-search",), "evidence": ("live.document_access",), "example": None},
-    {"capability": "page_text", "services": ("text",), "evidence": ("live.document_access",), "example": None},
+    {"capability": "page_text", "services": ("text",), "evidence": ("live.text_access",), "example": None},
     {"capability": "page_alto", "services": ("alto",), "evidence": ("live.vertical_slice", "live.corpus_pages"), "example": None},
     {"capability": "page_iiif_info", "services": ("iiif-image",), "evidence": ("live.vertical_slice",), "example": None},
     {"capability": "page_image", "services": ("iiif-image",), "evidence": ("live.vertical_slice", "live.corpus_pages"), "example": None},
     {"capability": "periodical_issue", "services": ("issues",), "evidence": ("live.document_access",), "example": None},
-    {"capability": "corpus_fetch", "services": ("oai-record", "text", "alto", "iiif-image"), "evidence": ("live.corpus_document", "live.corpus_pages", "live.document_access"), "example": "example.search_to_corpus"},
+    {"capability": "corpus_fetch", "services": ("oai-record", "text", "alto", "iiif-image"), "evidence": ("live.corpus_document", "live.corpus_pages", "live.text_access"), "example": "example.search_to_corpus"},
 )
 
 
