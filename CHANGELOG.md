@@ -8,10 +8,11 @@ The project follows semantic versioning once a first public release is published
 
 ### Added
 
-- typed Python access to Gallica SRU, Categories, OAIRecord, Pagination, Toc, Issues, ContentSearch, plain OCR text, ALTO and IIIF Image services;
+- typed Python access to Gallica SRU, Categories, OAIRecord, Pagination, Toc, Issues, ContentSearch, plain OCR text, ALTO, IIIF Image and IIIF Presentation services;
 - `Gallica.categories()` with typed search refinements, approximate-count semantics, official Categories → CQL field mapping and raw JSON preservation;
 - structured `Document.pagination()` access with navigation metadata, image/audio view counts and logical page labels while preserving raw XML;
 - `Document.toc()` with explicit preservation of legacy HTML versus TEI XML table-of-contents representations;
+- `Document.iiif_manifest()` with explicit IIIF Presentation v2/v3 detection, version-specific validation, canvas counts and raw JSON preservation without lossy v2→v3 normalization;
 - `Document`, `Page`, `Periodical` and resumable `Corpus` abstractions;
 - lazy SRU pagination and search-result handoff to corpus workflows;
 - JSONL export for search results;
@@ -52,6 +53,7 @@ The project follows semantic versioning once a first public release is published
 ### Known limitations
 
 - automated PDF access is intentionally unsupported until a reproducible public contract is validated;
+- IIIF Presentation public machine access is currently environment-limited from some cold external runners even though the BnF documents the v2 manifest endpoint;
 - page-level corpus downloads require explicit views and never imply all pages;
 - no MCP, async public API, Parquet/DataFrame export or implicit high-volume concurrency is provided yet;
 - PyPI publication remains intentionally disabled until license, version policy and publishing trust configuration are decided.

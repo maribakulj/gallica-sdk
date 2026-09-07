@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from gallica import Gallica, GallicaResponseError
@@ -53,3 +54,36 @@ def test_public_categories_exposes_search_refinements() -> None:
         assert all(item.clean_value for item in typedoc)
 
     record_live_evidence("live.search_categories", service_outcome="operational")
+
+
+def test_public_iiif_presentation_manifest() -> None:
+    with Gallica() as gallica:
+        try:
+            manifest = gallica.document("btv1b550076223").iiif_manifest()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 403:
+                raise
+            record_live_evidence(
+                "live.iiif_presentation",
+                service_outcome="environment-limited",
+                detail="IIIF Presentation returned HTTP 403 from this public runner",
+            )
+            return
+        except GallicaResponseError as exc:
+            if "IIIF Presentation manifest returned HTML" not in str(exc):
+                raise
+            record_live_evidence(
+                "live.iiif_presentation",
+                service_outcome="environment-limited",
+                detail="IIIF Presentation returned HTML from this public runner",
+            )
+            return
+
+        assert manifest.version == "2"
+        assert manifest.identifier is not None
+        assert manifest.context
+        assert manifest.canvas_count is not None
+        assert manifest.canvas_count > 0
+        assert "presentation/2" in " ".join(manifest.context).lower()
+
+    record_live_evidence("live.iiif_presentation", service_outcome="operational")

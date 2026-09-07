@@ -25,6 +25,7 @@ La CI exécute `python scripts/generate_docs.py --check` et échoue si le bloc g
 | `document_pagination` | `Document.pagination() -> Pagination` | services/Pagination | `Pagination` | live-validated | view orders are 1-based<br>raw XML remains available as raw_xml |
 | `document_page_count` | `Document.page_count() -> int` | services/Pagination | `int` | live-validated | projects Pagination.image_views |
 | `document_toc` | `Document.toc() -> TocDocument` | services/Toc | `TocDocument` | live-validated | returns format='html' for legacy TOCs and format='tei' for TEI XML<br>raw upstream content is preserved |
+| `document_iiif_manifest` | `Document.iiif_manifest() -> IIIFPresentationManifest` | IIIF Presentation | `IIIFPresentationManifest` | environment-limited | the SDK detects IIIF Presentation version explicitly<br>BnF documentation currently advertises Presentation v2<br>the SDK does not normalize v2 manifests into v3<br>raw JSON remains available as raw_json |
 | `document_text` | `Document.text() -> str` | .texteBrut | `str` | environment-limited | public quota documented as 5 requests/minute |
 | `content_search` | `Document.search_text(query, page=None, start_result=None) -> ContentSearchResults` | services/ContentSearch | `ContentSearchResults` | live-validated | page and start_result must be >= 1 when supplied<br>the public service returns at most 10 items per request<br>when page is supplied, OCR word rectangles are returned relative to p_width/p_height<br>raw XML remains available as raw_xml |
 | `content_search_all` | `Document.search_text_all(query, page=None, limit=None) -> Iterator[ContentSearchItem]` | services/ContentSearch | `Iterator[ContentSearchItem]` | live-validated | page must be >= 1 when supplied<br>limit must be >= 1 when supplied<br>pagination is lazy and follows the service's 10-item page cap |
@@ -53,6 +54,7 @@ Le SDK transforme seulement les structures suffisamment stables pour apporter un
 - OAIRecord devient `DocumentMetadata`, avec Dublin Core répétable, informations techniques Gallica et XML source ;
 - Pagination devient `Pagination`, avec nombre de vues, structure de navigation, labels logiques par vue et XML source ;
 - Toc devient `TocDocument` et conserve explicitement la différence entre anciens sommaires HTML et TEI XML ;
+- IIIF Presentation devient `IIIFPresentationManifest`, avec version détectée explicitement, identifiant, contextes, nombre de canvases et JSON source, sans conversion v2 vers v3 ;
 - ContentSearch devient `ContentSearchResults`, avec extraits, pagination, dimensions master et toutes les occurrences `ContentSearchMatch` lorsque la géométrie est demandée ;
 - `ContentSearchItem.alto_id` reste disponible pour compatibilité et pointe vers la valeur historique directe ou la première occurrence géométrique.
 
