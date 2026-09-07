@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from gallica import Gallica, GallicaResponseError
+from gallica.evidence import record_live_evidence
 
 pytestmark = pytest.mark.live
 
@@ -18,6 +19,8 @@ def test_public_search_all_paginates_and_exposes_arks() -> None:
         corpus = gallica.corpus(first_page.arks)
         assert len(corpus) == 3
 
+    record_live_evidence("live.search_pagination", service_outcome="operational")
+
 
 def test_public_categories_exposes_search_refinements() -> None:
     with Gallica() as gallica:
@@ -28,6 +31,11 @@ def test_public_categories_exposes_search_refinements() -> None:
             # runners. Rejecting that page instead of parsing it as JSON is the
             # expected safe behavior until public machine access is reproducible.
             assert "Categories returned HTML" in str(exc)
+            record_live_evidence(
+                "live.search_categories",
+                service_outcome="environment-limited",
+                detail="Categories returned HTML/403 from this public runner",
+            )
             return
 
         assert len(categories) > 0
@@ -43,3 +51,5 @@ def test_public_categories_exposes_search_refinements() -> None:
         assert typedoc
         assert all(item.cql_field == "dc.type" for item in typedoc)
         assert all(item.clean_value for item in typedoc)
+
+    record_live_evidence("live.search_categories", service_outcome="operational")
