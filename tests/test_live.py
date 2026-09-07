@@ -55,16 +55,16 @@ def test_public_gallica_vertical_slice() -> None:
 
 
 def test_public_gallica_phase1_document_access() -> None:
-    service_outcome = "operational"
-    detail: str | None = None
+    text_outcome = "operational"
+    text_detail: str | None = None
     with Gallica() as gallica:
         text_doc = gallica.document("bpt6k5460422k")
         try:
             text = text_doc.text()
         except GallicaResponseError as exc:
             assert "anti-bot challenge" in str(exc)
-            service_outcome = "environment-limited"
-            detail = "texteBrut returned the detected Gallica anti-bot challenge from this runner"
+            text_outcome = "environment-limited"
+            text_detail = "texteBrut returned the detected Gallica anti-bot challenge from this runner"
         else:
             assert len(text) > 100
             assert len(text_doc.page(1).text()) > 10
@@ -96,10 +96,11 @@ def test_public_gallica_phase1_document_access() -> None:
         assert issue is not None
         assert issue.ark == "bpt6k5509212w"
 
+    record_live_evidence("live.document_access", service_outcome="operational")
     record_live_evidence(
-        "live.document_access",
-        service_outcome=service_outcome,
-        detail=detail,
+        "live.text_access",
+        service_outcome=text_outcome,
+        detail=text_detail,
     )
 
 
