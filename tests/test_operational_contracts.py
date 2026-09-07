@@ -7,9 +7,25 @@ import pytest
 from gallica import (
     build_evidence_attestation,
     capabilities,
+    evidence,
     operational_contract,
     operational_contracts,
 )
+
+
+def _observations(*, limited: set[str] | None = None) -> tuple[dict[str, str], ...]:
+    limited_ids = limited or set()
+    return tuple(
+        {
+            "evidence_id": item["id"],
+            "service_outcome": (
+                "environment-limited" if item["id"] in limited_ids else "operational"
+            ),
+            "observed_at": "2026-09-05T10:00:00Z",
+        }
+        for item in evidence()
+        if item["kind"] == "live-test"
+    )
 
 
 def test_operational_contracts_cover_every_capability_once() -> None:
@@ -43,11 +59,32 @@ def test_attestation_resolves_current_operational_freshness() -> None:
     attestation = build_evidence_attestation(
         commit="b" * 40,
         run_url="https://github.com/example/repo/actions/runs/99",
-        observed_at="2026-09-05T10:00:00Z",
+        observations=_observations(),
+        generated_at="2026-09-05T10:01:00Z",
     )
     contract = operational_contract("page_alto", attestation=attestation)
     assert contract["freshness"]
     assert all(item["state"] == "fresh" for item in contract["freshness"])
+    assert all(item["service_outcome"] == "operational" for item in contract["freshness"])
+
+
+def test_text_limitation_does_not_downgrade_content_search() -> None:
+    attestation = build_evidence_attestation(
+        commit="c" * 40,
+        run_url="https://github.com/example/repo/actions/runs/100",
+        observations=_observations(limited={"live.text_access"}),
+        generated_at="2026-09-05T10:01:00Z",
+    )
+
+    text_contract = operational_contract("document_text", attestation=attestation)
+    assert {item["service_outcome"] for item in text_contract["freshness"]} == {
+        "environment-limited"
+    }
+
+    content_search = operational_contract("content_search", attestation=attestation)
+    assert {item["service_outcome"] for item in content_search["freshness"]} == {
+        "operational"
+    }
 
 
 def test_resolved_page_alto_contract_is_self_contained() -> None:

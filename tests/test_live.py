@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from gallica import Gallica, GallicaResponseError
+from gallica.evidence import record_live_evidence
 
 pytestmark = pytest.mark.live
 
@@ -50,14 +51,20 @@ def test_public_gallica_vertical_slice() -> None:
         image = gallica.document("btv1b53066668g").page(1).image(width=1000)
         assert len(image) > 1000
 
+    record_live_evidence("live.vertical_slice", service_outcome="operational")
+
 
 def test_public_gallica_phase1_document_access() -> None:
+    text_outcome = "operational"
+    text_detail: str | None = None
     with Gallica() as gallica:
         text_doc = gallica.document("bpt6k5460422k")
         try:
             text = text_doc.text()
         except GallicaResponseError as exc:
             assert "anti-bot challenge" in str(exc)
+            text_outcome = "environment-limited"
+            text_detail = "texteBrut returned the detected Gallica anti-bot challenge from this runner"
         else:
             assert len(text) > 100
             assert len(text_doc.page(1).text()) > 10
@@ -89,6 +96,13 @@ def test_public_gallica_phase1_document_access() -> None:
         assert issue is not None
         assert issue.ark == "bpt6k5509212w"
 
+    record_live_evidence("live.document_access", service_outcome="operational")
+    record_live_evidence(
+        "live.text_access",
+        service_outcome=text_outcome,
+        detail=text_detail,
+    )
+
 
 def test_public_gallica_corpus_v1(tmp_path: Path) -> None:
     with Gallica() as gallica:
@@ -106,6 +120,8 @@ def test_public_gallica_corpus_v1(tmp_path: Path) -> None:
         second = corpus.fetch(tmp_path, metadata=True, text=False, resume=True)
         assert len(second.skipped) == 1
         assert len((tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()) == 1
+
+    record_live_evidence("live.corpus_document", service_outcome="operational")
 
 
 def test_public_gallica_corpus_page_artifacts(tmp_path: Path) -> None:
@@ -135,3 +151,5 @@ def test_public_gallica_corpus_page_artifacts(tmp_path: Path) -> None:
             resume=True,
         )
         assert len(second.skipped) == 1
+
+    record_live_evidence("live.corpus_pages", service_outcome="operational")

@@ -4,7 +4,10 @@ import json
 import os
 from pathlib import Path
 
-from gallica import build_evidence_attestation
+from gallica.evidence import (
+    build_evidence_attestation,
+    load_live_evidence_observations,
+)
 
 
 def main() -> None:
@@ -12,10 +15,19 @@ def main() -> None:
     repository = os.environ.get("GITHUB_REPOSITORY", "")
     run_id = os.environ.get("GITHUB_RUN_ID", "")
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    observations_path = os.environ.get("GALLICA_LIVE_EVIDENCE_PATH", "")
     if not commit or not repository or not run_id:
         raise SystemExit("GITHUB_SHA, GITHUB_REPOSITORY and GITHUB_RUN_ID are required")
+    if not observations_path:
+        raise SystemExit("GALLICA_LIVE_EVIDENCE_PATH is required")
+
     run_url = f"{server}/{repository}/actions/runs/{run_id}"
-    attestation = build_evidence_attestation(commit=commit, run_url=run_url)
+    observations = load_live_evidence_observations(observations_path)
+    attestation = build_evidence_attestation(
+        commit=commit,
+        run_url=run_url,
+        observations=observations,
+    )
     output = Path(os.environ.get("EVIDENCE_ATTESTATION_PATH", "evidence-attestation.json"))
     output.write_text(
         json.dumps(attestation, ensure_ascii=False, indent=2, sort_keys=True) + "\n",

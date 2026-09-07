@@ -19,6 +19,7 @@ The project follows semantic versioning once a first public release is published
 - machine-readable capability contracts and agent recipes;
 - programmable Gallica service reference with JSON Schema;
 - capability → service → evidence graph;
+- run-specific JSONL live observations with explicit `operational` versus `environment-limited` service outcomes;
 - live-validation provenance, observation timestamps and evidence freshness classification;
 - resolved operational contracts combining signature, output semantics, expected errors, services, evidence and freshness;
 - `operational_contract()` and `operational_contracts()` plus JSON export support;
@@ -37,6 +38,8 @@ The project follows semantic versioning once a first public release is published
 
 ### Changed
 
+- CI evidence attestations now require one observation for every declared live test and use schema 2.0 with separate test and service outcomes; legacy schema-1.0 attestations remain readable without being promoted to operational evidence;
+- live evidence declarations no longer embed historical timestamps, commits or workflow runs; run-specific provenance exists only in generated attestations;
 - `Document.page_count()` is now a projection of the structured `Pagination.image_views` contract rather than a separate XML parsing path;
 - project positioning expanded from a Python-only SDK to a verified programmable reference plus Python SDK;
 - package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;

@@ -12,6 +12,8 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      GALLICA_LIVE_EVIDENCE_PATH: live-evidence-results.jsonl
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -19,13 +21,18 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install -e '.[dev]'
-      - run: pytest -m live tests/test_live.py tests/test_live_usability.py
+      - name: Run live suite and record service outcomes
+        run: |
+          rm -f "$GALLICA_LIVE_EVIDENCE_PATH"
+          pytest -m live tests/test_live.py tests/test_live_usability.py
       - name: Generate evidence attestation
         run: python scripts/generate_evidence_attestation.py
       - name: Upload evidence attestation
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: gallica-evidence-attestation-${{ github.sha }}
-          path: evidence-attestation.json
+          path: |
+            evidence-attestation.json
+            live-evidence-results.jsonl
           if-no-files-found: error
           retention-days: 30
