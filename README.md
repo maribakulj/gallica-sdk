@@ -13,7 +13,7 @@ Le projet ne remplace ni les services Gallica ni la documentation BnF, qui reste
 
 **0.2.0.dev0 — version de développement.** Aucune release stable n'est encore publiée.
 
-Le dépôt couvre aujourd'hui SRU, Categories, OAIRecord, Pagination, Toc, Issues, ContentSearch, OCR texte, ALTO, IIIF Image et les compositions `Document`, `Page`, `Periodical` et `Corpus`.
+Le dépôt couvre aujourd'hui SRU, Categories, OAIRecord, Pagination, Toc, Issues, ContentSearch, OCR texte, ALTO, IIIF Image, IIIF Presentation et les compositions `Document`, `Page`, `Periodical` et `Corpus`.
 
 ## Installation
 
@@ -78,6 +78,7 @@ with Gallica() as gallica:
     pagination = document.pagination()
     page_count = document.page_count()
     toc = document.toc()
+    manifest = document.iiif_manifest()
 
     text = document.text()
     matches = document.search_text("hugo")
@@ -90,7 +91,7 @@ with Gallica() as gallica:
     image = page.image(width=1000)
 ```
 
-`Pagination` conserve la structure de navigation et les labels logiques par vue. `TocDocument` préserve la différence entre anciens sommaires HTML et réponses TEI XML. `ContentSearch` conserve les extraits, les dimensions master et toutes les boîtes OCR retournées pour une vue.
+`Pagination` conserve la structure de navigation et les labels logiques par vue. `TocDocument` préserve la différence entre anciens sommaires HTML et réponses TEI XML. `IIIFPresentationManifest` détecte explicitement Presentation v2 ou v3, conserve le JSON source et ne transforme pas artificiellement un manifeste v2 en v3. La documentation technique BnF consultée pour ce contrat annonce actuellement Presentation v2. `ContentSearch` conserve les extraits, les dimensions master et toutes les boîtes OCR retournées pour une vue.
 
 Guide : [`docs/documents.md`](docs/documents.md).
 
@@ -237,6 +238,7 @@ Document.metadata() -> DocumentMetadata
 Document.pagination() -> Pagination
 Document.page_count() -> int
 Document.toc() -> TocDocument
+Document.iiif_manifest() -> IIIFPresentationManifest
 Document.text() -> str
 Document.search_text(query, page=None, start_result=None) -> ContentSearchResults
 Document.search_text_all(query, page=None, limit=None) -> Iterator[ContentSearchItem]
