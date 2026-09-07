@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
+
+from gallica import capabilities
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,10 +39,26 @@ def test_user_documentation_is_linked_from_readme() -> None:
         assert relative_path in readme, relative_path
 
 
+def test_generated_capability_documentation_is_current() -> None:
+    subprocess.run(
+        [sys.executable, "scripts/generate_docs.py", "--check"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
+def test_every_canonical_capability_is_visible_in_human_docs() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    matrix = (ROOT / "docs/capabilities.md").read_text(encoding="utf-8")
+    for spec in capabilities():
+        assert spec["call"] in readme, spec["id"]
+        assert spec["call"] in matrix, spec["id"]
+
+
 def test_readme_does_not_claim_existing_cli_is_missing() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "docs/cli.md" in readme
-    missing_section = readme.partition("## Pas encore dans la 0.2")[2]
+    missing_section = readme.partition("## Non-objectifs actuels")[2]
     assert "- CLI" not in missing_section
 
 
