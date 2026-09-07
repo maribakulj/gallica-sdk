@@ -165,7 +165,7 @@ def load_live_evidence_observations(path: str | Path) -> tuple[LiveEvidenceObser
         if service_outcome not in _SERVICE_OUTCOMES:
             raise ValueError(f"invalid service_outcome for {evidence_id}: {service_outcome}")
         observed_at = str(raw["observed_at"])
-        datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+        datetime.fromisoformat(observed_at)
         record: LiveEvidenceObservation = {
             "evidence_id": evidence_id,
             "service_outcome": service_outcome,
@@ -202,7 +202,7 @@ def build_evidence_attestation(
         service_outcome = observation["service_outcome"]
         if service_outcome not in _SERVICE_OUTCOMES:
             raise ValueError(f"invalid service_outcome for {evidence_id}: {service_outcome}")
-        datetime.fromisoformat(observation["observed_at"].replace("Z", "+00:00"))
+        datetime.fromisoformat(observation["observed_at"])
         observed[evidence_id] = observation
 
     missing = set(declared) - set(observed)
@@ -298,7 +298,7 @@ def evidence_freshness(
             result.append({"id": item["id"], "state": "unknown", "age_days": None, "observed_at": None, "confidence": confidence, "test_outcome": None, "service_outcome": None})
             continue
         observed_at = record["observed_at"]
-        observed_date = datetime.fromisoformat(observed_at.replace("Z", "+00:00")).date()
+        observed_date = datetime.fromisoformat(observed_at).date()
         age_days = (today - observed_date).days
         threshold = item.get("freshness_days", 14)
         if record["test_outcome"] != "passed" or record["service_outcome"] == "unknown":
