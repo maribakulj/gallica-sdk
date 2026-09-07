@@ -8,6 +8,7 @@ from .models import (
     ContentSearchItem,
     ContentSearchResults,
     DocumentMetadata,
+    IIIFImageInfo,
     IIIFPresentationManifest,
     Pagination,
     TocDocument,
@@ -117,8 +118,8 @@ class Page:
         """Return the raw ALTO XML bytes for this view."""
         return self._gallica._alto(self.ark, self.number)
 
-    def iiif_info(self) -> dict[str, object]:
-        """Return the IIIF Image API info.json object for this view."""
+    def iiif_info(self) -> IIIFImageInfo:
+        """Return typed IIIF Image API info.json metadata for this view."""
         return self._gallica._iiif_info(self.ark, self.number)
 
     def image(self, *, width: int = 1000, fmt: str = "jpg") -> bytes:

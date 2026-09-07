@@ -178,6 +178,20 @@ class IIIFPresentationManifest:
 
 
 @dataclass(frozen=True, slots=True)
+class IIIFImageInfo:
+    """Minimal typed IIIF Image info.json with the upstream JSON preserved."""
+
+    version: Literal["2", "3", "unknown"]
+    identifier: str | None
+    context: tuple[str, ...]
+    protocol: str | None
+    profiles: tuple[str, ...]
+    width: int
+    height: int
+    raw_json: str
+
+
+@dataclass(frozen=True, slots=True)
 class ContentSearchMatch:
     """One OCR word rectangle returned by ContentSearch with ``page``."""
 

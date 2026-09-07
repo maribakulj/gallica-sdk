@@ -21,6 +21,7 @@ from .models import (
     ContentSearchResults,
     DocumentMetadata,
     DublinCoreRecord,
+    IIIFImageInfo,
     IIIFPresentationManifest,
     Pagination,
     SearchResults,
@@ -263,6 +264,100 @@ def _validate_iiif_manifest(response: httpx.Response) -> IIIFPresentationManifes
     )
 
 
+def _iiif_image_contexts(raw_context: object) -> tuple[str, ...]:
+    if raw_context is None:
+        return ()
+    if isinstance(raw_context, str):
+        return (raw_context,)
+    if isinstance(raw_context, list) and all(isinstance(item, str) for item in raw_context):
+        return tuple(raw_context)
+    raise GallicaResponseError("IIIF Image info response has invalid @context")
+
+
+def _iiif_image_profiles(raw_profile: object) -> tuple[str, ...]:
+    if raw_profile is None:
+        return ()
+    if isinstance(raw_profile, str):
+        return (raw_profile,)
+    if not isinstance(raw_profile, list):
+        raise GallicaResponseError("IIIF Image info response has invalid profile")
+    profiles: list[str] = []
+    for item in raw_profile:
+        if isinstance(item, str):
+            profiles.append(item)
+        elif not isinstance(item, dict):
+            raise GallicaResponseError("IIIF Image info response has invalid profile entry")
+    return tuple(profiles)
+
+
+def _iiif_image_version(
+    contexts: tuple[str, ...], profiles: tuple[str, ...]
+) -> Literal["2", "3", "unknown"]:
+    versions: set[Literal["2", "3"]] = set()
+    for value in (*contexts, *profiles):
+        lowered = value.lower()
+        if "/image/2/" in lowered:
+            versions.add("2")
+        if "/image/3/" in lowered:
+            versions.add("3")
+    if len(versions) > 1:
+        raise GallicaResponseError("IIIF Image info response mixes v2 and v3 indicators")
+    if not versions:
+        return "unknown"
+    return next(iter(versions))
+
+
+def _validate_iiif_info(response: httpx.Response) -> IIIFImageInfo:
+    _reject_html(response, service="IIIF info.json")
+    try:
+        payload: object = response.json()
+    except ValueError as exc:
+        raise GallicaResponseError("IIIF info response is not valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise GallicaResponseError("IIIF info response is not a JSON object")
+
+    info = cast(dict[str, object], payload)
+    width = info.get("width")
+    height = info.get("height")
+    if isinstance(width, bool) or not isinstance(width, int) or width < 1:
+        raise GallicaResponseError("IIIF info response lacks positive integer width/height")
+    if isinstance(height, bool) or not isinstance(height, int) or height < 1:
+        raise GallicaResponseError("IIIF info response lacks positive integer width/height")
+
+    contexts = _iiif_image_contexts(info.get("@context"))
+    profiles = _iiif_image_profiles(info.get("profile"))
+    version = _iiif_image_version(contexts, profiles)
+
+    protocol = info.get("protocol")
+    if protocol is not None and not isinstance(protocol, str):
+        raise GallicaResponseError("IIIF info response has invalid protocol")
+
+    raw_identifier: object
+    if version == "2":
+        raw_identifier = info.get("@id")
+        if not isinstance(raw_identifier, str) or not raw_identifier:
+            raise GallicaResponseError("IIIF Image v2 info response lacks a valid @id")
+    elif version == "3":
+        raw_identifier = info.get("id")
+        if not isinstance(raw_identifier, str) or not raw_identifier:
+            raise GallicaResponseError("IIIF Image v3 info response lacks a valid id")
+    else:
+        raw_identifier = info.get("id", info.get("@id"))
+        if raw_identifier is not None and not isinstance(raw_identifier, str):
+            raise GallicaResponseError("IIIF info response has an invalid identifier")
+
+    return IIIFImageInfo(
+        version=version,
+        identifier=raw_identifier,
+        context=contexts,
+        protocol=protocol,
+        profiles=profiles,
+        width=width,
+        height=height,
+        raw_json=response.text,
+    )
+
+
 class Gallica:
     """Entry point for the public Gallica APIs."""
 
@@ -453,22 +548,11 @@ class Gallica:
                 return normalize_ark(issue_ark)
         return None
 
-    def _iiif_info(self, ark: str, view: int) -> dict[str, object]:
+    def _iiif_info(self, ark: str, view: int) -> IIIFImageInfo:
         if view < 1:
             raise ValueError("view must be >= 1")
         response = self._transport.get(f"{BASE_URL}/iiif/{ark_uri(ark)}/f{view}/info.json")
-        _reject_html(response, service="IIIF info.json")
-        try:
-            payload: object = response.json()
-        except ValueError as exc:
-            raise GallicaResponseError("IIIF info response is not valid JSON") from exc
-        if not isinstance(payload, dict):
-            raise GallicaResponseError("IIIF info response is not a JSON object")
-        width = payload.get("width")
-        height = payload.get("height")
-        if not isinstance(width, int) or width < 1 or not isinstance(height, int) or height < 1:
-            raise GallicaResponseError("IIIF info response lacks positive integer width/height")
-        return cast(dict[str, object], payload)
+        return _validate_iiif_info(response)
 
     @staticmethod
     def _iiif_bucket(size: str) -> str:

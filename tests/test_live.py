@@ -46,7 +46,13 @@ def test_public_gallica_vertical_slice() -> None:
         assert len(alto) > 1000
 
         info = gallica.document("btv1b53066668g").page(1).iiif_info()
-        assert int(info["width"]) > 1000
+        assert info.width > 1000
+        assert info.height > 1000
+        # The current Gallica payload validates structurally but does not expose
+        # a v2/v3 marker in the @context/profile fields used by this contract.
+        # Keep that ambiguity explicit instead of importing a version from docs.
+        assert info.version == "unknown"
+        assert info.raw_json
 
         image = gallica.document("btv1b53066668g").page(1).image(width=1000)
         assert len(image) > 1000
