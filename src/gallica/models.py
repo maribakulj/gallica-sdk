@@ -167,6 +167,17 @@ class TocDocument:
 
 
 @dataclass(frozen=True, slots=True)
+class IIIFPresentationManifest:
+    """Minimal typed IIIF Presentation manifest with the upstream JSON preserved."""
+
+    version: Literal["2", "3", "unknown"]
+    identifier: str | None
+    context: tuple[str, ...]
+    canvas_count: int | None
+    raw_json: str
+
+
+@dataclass(frozen=True, slots=True)
 class ContentSearchMatch:
     """One OCR word rectangle returned by ContentSearch with ``page``."""
 
