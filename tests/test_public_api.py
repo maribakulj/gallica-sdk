@@ -2,9 +2,33 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
+from dataclasses import fields
 
 import gallica
-from gallica import Corpus, Document, Gallica, Page, Periodical
+from gallica import (
+    Categories,
+    CategoryValue,
+    ContentSearchItem,
+    ContentSearchMatch,
+    ContentSearchResults,
+    Corpus,
+    CorpusArtifactFailure,
+    CorpusArtifactRecord,
+    CorpusItemResult,
+    CorpusReport,
+    Document,
+    DocumentMetadata,
+    DublinCoreRecord,
+    Gallica,
+    IIIFImageInfo,
+    IIIFPresentationManifest,
+    Page,
+    Pagination,
+    PaginationPage,
+    Periodical,
+    SearchResults,
+    TocDocument,
+)
 
 EXPECTED_ROOT_EXPORTS = (
     "CATEGORY_CQL_FIELDS",
@@ -52,6 +76,67 @@ EXPECTED_ROOT_EXPORTS = (
     "programmable_reference",
 )
 
+EXPECTED_MODEL_FIELDS: tuple[tuple[type[object], tuple[str, ...]], ...] = (
+    (DublinCoreRecord, ("fields",)),
+    (SearchResults, ("query", "total", "records", "raw_xml")),
+    (CategoryValue, ("category", "clean_value", "approximate_count", "label")),
+    (Categories, ("query", "values", "raw_json")),
+    (DocumentMetadata, ("ark", "record", "indexing_mode", "ocr_quality", "raw_xml")),
+    (PaginationPage, ("number", "order", "pagination_type", "legend")),
+    (
+        Pagination,
+        (
+            "first_displayed_page",
+            "has_toc",
+            "toc_location",
+            "has_content",
+            "digital_id",
+            "image_views",
+            "audio_views",
+            "pages",
+            "raw_xml",
+        ),
+    ),
+    (TocDocument, ("format", "raw", "well_formed")),
+    (
+        IIIFPresentationManifest,
+        ("version", "identifier", "context", "canvas_count", "raw_json"),
+    ),
+    (
+        IIIFImageInfo,
+        ("version", "identifier", "context", "protocol", "profiles", "width", "height", "raw_json"),
+    ),
+    (ContentSearchMatch, ("alto_id", "hpos", "vpos", "width", "height")),
+    (
+        ContentSearchItem,
+        ("page_id", "content_html", "alto_id", "score", "page_width", "page_height", "matches"),
+    ),
+    (ContentSearchResults, ("query", "total", "items", "raw_xml")),
+    (
+        CorpusArtifactRecord,
+        ("kind", "path", "fingerprint", "sha256", "size", "parameters", "sdk_version"),
+    ),
+    (
+        CorpusArtifactFailure,
+        ("kind", "path", "fingerprint", "parameters", "error_type", "message", "retryable", "sdk_version"),
+    ),
+    (
+        CorpusItemResult,
+        (
+            "ark",
+            "status",
+            "metadata_path",
+            "text_path",
+            "alto_paths",
+            "image_paths",
+            "artifacts",
+            "failure_details",
+            "error",
+        ),
+    ),
+    (CorpusReport, ("items", "manifest_path")),
+)
+
 
 def _parameter_shape(callable_: Callable[..., object]) -> tuple[tuple[str, str, object], ...]:
     shape: list[tuple[str, str, object]] = []
@@ -73,8 +158,15 @@ def test_root_exports_are_the_audited_release_surface() -> None:
         assert hasattr(gallica, name), name
 
 
+def test_typed_result_fields_are_the_audited_release_schema() -> None:
+    for model, expected in EXPECTED_MODEL_FIELDS:
+        assert tuple(field.name for field in fields(model)) == expected, model.__name__
+
+
 def test_core_constructor_and_factory_shapes_are_stable() -> None:
     assert _parameter_shape(Gallica) == (("transport", "POSITIONAL_OR_KEYWORD", None),)
+    assert _parameter_shape(Gallica.close) == ()
+    assert _parameter_shape(Gallica.capabilities) == ()
     assert _parameter_shape(Gallica.document) == (("ark", "POSITIONAL_OR_KEYWORD", "<required>"),)
     assert _parameter_shape(Gallica.periodical) == (("ark", "POSITIONAL_OR_KEYWORD", "<required>"),)
     assert _parameter_shape(Gallica.corpus) == (("arks", "POSITIONAL_OR_KEYWORD", "<required>"),)
@@ -126,6 +218,22 @@ def test_document_and_page_shapes_are_stable() -> None:
     assert _parameter_shape(Page.image) == (
         ("width", "KEYWORD_ONLY", 1000),
         ("fmt", "KEYWORD_ONLY", "jpg"),
+    )
+
+
+def test_result_helper_shapes_are_stable() -> None:
+    assert _parameter_shape(DublinCoreRecord.values) == (
+        ("name", "POSITIONAL_OR_KEYWORD", "<required>"),
+    )
+    assert _parameter_shape(DublinCoreRecord.first) == (
+        ("name", "POSITIONAL_OR_KEYWORD", "<required>"),
+    )
+    assert _parameter_shape(DublinCoreRecord.as_dict) == ()
+    assert _parameter_shape(SearchResults.write_jsonl) == (
+        ("path", "POSITIONAL_OR_KEYWORD", "<required>"),
+    )
+    assert _parameter_shape(Categories.for_category) == (
+        ("category", "POSITIONAL_OR_KEYWORD", "<required>"),
     )
 
 
