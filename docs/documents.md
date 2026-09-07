@@ -76,6 +76,23 @@ Le SDK ne force pas HTML et TEI dans un modèle commun potentiellement destructe
 
 `pagination.has_toc` et `pagination.toc_location` permettent de savoir si le service Pagination signale une table des matières et à quelle vue elle est associée, sans télécharger le TOC lui-même.
 
+## IIIF Presentation
+
+```python
+manifest = document.iiif_manifest()
+print(manifest.version)
+print(manifest.identifier)
+print(manifest.canvas_count)
+```
+
+La documentation technique BnF consultée en septembre 2026 annonce actuellement IIIF Presentation **version 2** et documente la forme `https://gallica.bnf.fr/iiif/ark:/12148/<ARK>/manifest.json`. Le SDK ne transforme cependant pas cette information documentaire en hypothèse cachée : il inspecte le `@context` et la structure du payload pour déterminer explicitement `manifest.version`.
+
+Les valeurs possibles sont `"2"`, `"3"` et `"unknown"`. Les structures v2 (`@id`, `@type`, `sequences`, `canvases`) et v3 (`id`, `type`, `items`) sont validées séparément. Un payload qui mélange les marqueurs des deux versions ou dont le contexte contredit la structure est rejeté avec `GallicaResponseError`.
+
+Le SDK ne convertit pas un manifeste v2 en v3. Cette absence de normalisation est intentionnelle : les deux versions ont des modèles différents et une conversion silencieuse supprimerait précisément l'information de protocole que cette primitive cherche à rendre explicite. Le JSON amont reste disponible dans `manifest.raw_json`.
+
+L'accès au manifeste peut être limité depuis certains environnements automatisés publics. Le service est donc actuellement marqué `environment-limited` dans la référence programmable ; les attestations live distinguent un 403 amont d'un échec de parsing ou d'un changement de protocole.
+
 ## OCR texte brut
 
 ```python
