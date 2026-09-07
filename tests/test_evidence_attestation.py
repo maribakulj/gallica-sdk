@@ -133,10 +133,48 @@ def test_legacy_v1_attestation_does_not_claim_service_operability(tmp_path: Path
     assert freshness["live.vertical_slice"]["state"] == "unknown"
 
 
+def test_attestation_loader_rejects_record_provenance_mismatch(tmp_path: Path) -> None:
+    attestation = build_evidence_attestation(
+        commit="a" * 40,
+        run_url="https://github.com/example/repo/actions/runs/10",
+        observations=_observations(),
+        generated_at="2026-09-05T12:01:00Z",
+    )
+    payload = json.loads(json.dumps(attestation))
+    payload["records"][0]["commit"] = "b" * 40
+    path = tmp_path / "mismatch.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="commit mismatch"):
+        load_evidence_attestation(path)
+
+
+def test_attestation_loader_rejects_invalid_v2_service_outcome(tmp_path: Path) -> None:
+    attestation = build_evidence_attestation(
+        commit="a" * 40,
+        run_url="https://github.com/example/repo/actions/runs/11",
+        observations=_observations(),
+        generated_at="2026-09-05T12:01:00Z",
+    )
+    payload = json.loads(json.dumps(attestation))
+    payload["records"][0]["service_outcome"] = "probably-fine"
+    path = tmp_path / "invalid-outcome.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="invalid service_outcome"):
+        load_evidence_attestation(path)
+
+
 def test_attestation_rejects_ambiguous_provenance() -> None:
     with pytest.raises(ValueError, match="40-character"):
         build_evidence_attestation(
             commit="short",
+            run_url="https://github.com/example/run",
+            observations=_observations(),
+        )
+    with pytest.raises(ValueError, match="40-character"):
+        build_evidence_attestation(
+            commit="g" * 40,
             run_url="https://github.com/example/run",
             observations=_observations(),
         )
@@ -145,4 +183,15 @@ def test_attestation_rejects_ambiguous_provenance() -> None:
             commit="e" * 40,
             run_url="not-a-url",
             observations=_observations(),
+        )
+
+
+def test_attestation_rejects_invalid_observation_timestamp() -> None:
+    observations = list(_observations())
+    observations[0]["observed_at"] = "not-a-timestamp"
+    with pytest.raises(ValueError, match="ISO 8601"):
+        build_evidence_attestation(
+            commit="e" * 40,
+            run_url="https://github.com/example/run",
+            observations=tuple(observations),
         )
