@@ -26,6 +26,7 @@ The project follows semantic versioning once a first public release is published
 - JSON-first `gallica` CLI for reference/capability inspection, SRU search, metadata and page counts;
 - PEP 561 `py.typed` marker for downstream type checkers;
 - user guides for search, documents/pages, periodicals, corpus, quotas, errors and CLI usage;
+- generated canonical capability sections in `README.md` and `docs/capabilities.md` with a CI anti-drift check;
 - executable notebooks for search/metadata and resumable corpus workflows;
 - CI execution of the reference notebooks against public Gallica services;
 - release metadata/tag validator;
@@ -40,6 +41,7 @@ The project follows semantic versioning once a first public release is published
 
 - CI evidence attestations now require one observation for every declared live test and use schema 2.0 with separate test and service outcomes; legacy schema-1.0 attestations remain readable without being promoted to operational evidence;
 - live evidence declarations no longer embed historical timestamps, commits or workflow runs; run-specific provenance exists only in generated attestations;
+- human capability documentation is now projected from the canonical capability/service graph instead of maintaining a second hand-written API inventory;
 - `Document.page_count()` is now a projection of the structured `Pagination.image_views` contract rather than a separate XML parsing path;
 - project positioning expanded from a Python-only SDK to a verified programmable reference plus Python SDK;
 - package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;

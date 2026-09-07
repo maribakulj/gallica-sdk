@@ -1,78 +1,84 @@
 # Matrice de capacités
 
-Cette matrice décrit le périmètre public actuel du SDK et distingue les capacités connues des capacités effectivement supportées.
+Cette page décrit le périmètre public actuel du SDK. La table centrale est générée depuis `capabilities()`, `capability_evidence()` et `programmable_reference()` afin que les signatures, services, retours et statuts ne dérivent pas de la surface réellement exposée.
 
-| Capacité | Service Gallica | Entrée principale | Sortie SDK | Contrainte connue | Statut |
+Pour régénérer la table après une évolution du SDK :
+
+```bash
+python scripts/generate_docs.py
+```
+
+La CI exécute `python scripts/generate_docs.py --check` et échoue si le bloc généré n'est plus à jour.
+
+## Capacités canoniques
+
+<!-- BEGIN GENERATED: canonical-capabilities -->
+| ID | Appel Python | Service | Retour | Statut | Contraintes canoniques |
 |---|---|---|---|---|---|
-| Recherche bibliographique | SRU 1.2 | requête CQL | `SearchResults` / `DublinCoreRecord` | `maximumRecords <= 50` | supportée |
-| Métadonnées document | `services/OAIRecord` | ARK | `DocumentMetadata` | Dublin Core répétable + informations techniques Gallica | supportée |
-| Pagination / nombre de vues | `services/Pagination` | ARK | `int` | `nbVueImages` est la source attendue | supportée |
-| Résolution d'un numéro de périodique | `services/Issues` | ARK + date | `Document | None` | `dayOfYear` structuré | supportée |
-| Recherche dans OCR | `services/ContentSearch` | ARK + requête | `ContentSearchResults` | 10 éléments max/réponse ; `startResult` pour paginer | supportée |
-| Géométrie d'occurrence OCR | `services/ContentSearch` | ARK + requête + page | `ContentSearchMatch` | coordonnées dans le repère master `p_width`/`p_height` ; plusieurs occurrences possibles | supportée |
-| Itération recherche OCR | `services/ContentSearch` | ARK + requête | `Iterator[ContentSearchItem]` | lazy ; pas de page-size configurable côté service | supportée |
-| OCR texte brut | `.texteBrut` | ARK / plage de vues | `str` | quota public documenté : 5/min | supportée |
-| OCR ALTO | `RequestDigitalElement` | ARK + vue | `bytes` XML ALTO | vue obligatoire | supportée |
-| Informations IIIF | IIIF `info.json` | ARK + vue | `dict` JSON | endpoint Image distinct de Presentation | supportée |
-| Image IIIF | IIIF Image | ARK + vue | `bytes` image | `/full/full/` ou largeur >1000 px : classe HD ; quota public documenté | supportée, largeur prudente par défaut |
-| PDF automatisé | représentation `.pdf` / qualifiers historiques | ARK / vue / plage | non exposé | quota public documenté : 4/min ; comportement automatisé à caractériser | non supportée pour l'instant |
-| Corpus métadonnées/texte | composition SDK | liste d'ARK | `CorpusReport` + manifest + fichiers | réutilise les quotas du transport ; synchrone | supportée |
-| Corpus ALTO/images | composition SDK | liste d'ARK + vues explicites | `CorpusReport` + fichiers par vue | aucune sélection implicite de toutes les vues | supportée |
+| `document` | `Gallica.document(ark) -> Document` | none; local handle construction | `Document` | local | accepts bare identifiers, ark:/12148/... and canonical Gallica URLs |
+| `periodical` | `Gallica.periodical(ark) -> Periodical` | none; local handle construction | `Periodical` | local | the ARK is normalized before use |
+| `corpus` | `Gallica.corpus(arks) -> Corpus` | none; local corpus construction | `Corpus` | local | ARKs are normalized and deduplicated while preserving first-seen order |
+| `search` | `Gallica.search(query, start_record=1, maximum_records=50) -> SearchResults` | SRU 1.2 | `SearchResults` | live-validated | maximum_records must be between 1 and 50 |
+| `categories` | `Gallica.categories(query) -> Categories` | services/Categories | `Categories` | environment-limited | empty queries are rejected<br>the service returns at most 20 values per category<br>howMany counts are approximate<br>some categories are not exhaustive<br>raw JSON remains available as raw_json |
+| `search_all` | `Gallica.search_all(query, limit=None, page_size=50) -> Iterator[DublinCoreRecord]` | SRU 1.2 | `Iterator[DublinCoreRecord]` | live-validated | page_size must be between 1 and 50<br>limit must be >= 1 when supplied<br>results are fetched lazily page by page |
+| `document_metadata` | `Document.metadata() -> DocumentMetadata` | services/OAIRecord | `DocumentMetadata` | live-validated | raw XML remains available as raw_xml |
+| `document_pagination` | `Document.pagination() -> Pagination` | services/Pagination | `Pagination` | live-validated | view orders are 1-based<br>raw XML remains available as raw_xml |
+| `document_page_count` | `Document.page_count() -> int` | services/Pagination | `int` | live-validated | projects Pagination.image_views |
+| `document_toc` | `Document.toc() -> TocDocument` | services/Toc | `TocDocument` | live-validated | returns format='html' for legacy TOCs and format='tei' for TEI XML<br>raw upstream content is preserved |
+| `document_text` | `Document.text() -> str` | .texteBrut | `str` | environment-limited | public quota documented as 5 requests/minute |
+| `content_search` | `Document.search_text(query, page=None, start_result=None) -> ContentSearchResults` | services/ContentSearch | `ContentSearchResults` | live-validated | page and start_result must be >= 1 when supplied<br>the public service returns at most 10 items per request<br>when page is supplied, OCR word rectangles are returned relative to p_width/p_height<br>raw XML remains available as raw_xml |
+| `content_search_all` | `Document.search_text_all(query, page=None, limit=None) -> Iterator[ContentSearchItem]` | services/ContentSearch | `Iterator[ContentSearchItem]` | live-validated | page must be >= 1 when supplied<br>limit must be >= 1 when supplied<br>pagination is lazy and follows the service's 10-item page cap |
+| `page_text` | `Page.text() -> str` | .texteBrut | `str` | environment-limited | public quota documented as 5 requests/minute |
+| `page_alto` | `Page.alto() -> bytes` | RequestDigitalElement E=ALTO | `bytes` | live-validated | view numbers are 1-based |
+| `page_iiif_info` | `Page.iiif_info() -> dict[str, object]` | IIIF Image info.json | `dict[str, object]` | live-validated | Image API is distinct from IIIF Presentation |
+| `page_image` | `Page.image(width=1000, fmt='jpg') -> bytes` | IIIF Image | `bytes` | live-validated | width must be >= 1<br>width > 1000 uses the HD rate bucket<br>1000px is the recommended default |
+| `periodical_issue` | `Periodical.issue(when) -> Document \| None` | services/Issues | `Document \| None` | live-validated | resolution uses dayOfYear from the Issues response |
+| `corpus_fetch` | `Corpus.fetch(output, metadata=True, text=False, alto=False, images=False, views=None, image_width=1000, resume=True) -> CorpusReport` | composition of supported SDK primitives | `CorpusReport` | mixed: environment-limited, live-validated | ALTO or images require explicit views<br>there is no implicit all-pages mode<br>resume validates request fingerprint, byte size and SHA-256<br>ordinary per-artifact failures do not stop independent artifacts or later ARKs |
+<!-- END GENERATED: canonical-capabilities -->
+
+Le statut est lui aussi dérivé de la référence programmable. `local` signifie que la construction elle-même ne fait pas de requête réseau. `environment-limited` signifie que le SDK possède un contrat et un comportement testé, mais que l'accès public automatisé n'est pas reproductible depuis tous les runners. `mixed` apparaît pour une composition qui combine des services de statuts différents.
 
 ## Règle de statut
 
-Une ligne ne doit pas être annoncée comme « supportée » uniquement parce que l'URL est connue. Pour une primitive réseau, il faut :
+Une primitive réseau n'est pas annoncée `live-validated` uniquement parce que son URL est connue. Elle doit disposer d'une construction de requête testée, d'un parsing ou d'une validation déterministe, d'au moins une preuve live pertinente et d'une documentation de ses contraintes opérationnelles.
 
-1. une construction de requête couverte par test ;
-2. une réponse simulée couvrant le parsing ou la valeur retournée ;
-3. un smoke test live depuis un réseau public ;
-4. une documentation de la contrainte de quota lorsqu'elle existe.
-
-Pour une capacité de composition comme `Corpus`, il faut en plus des tests déterministes de reprise, d'écriture partielle et d'isolation des erreurs.
-
-La référence programmable relie chaque capacité réseau supportée à son service et à au moins une preuve live. Les preuves enregistrent leur date d'observation, le commit testé, le run CI et une fenêtre de fraîcheur.
+Depuis les attestations de preuve 2.0, le résultat du test et l'état observé du service sont séparés. Un test peut donc être `passed` tout en enregistrant `service_outcome=environment-limited`, par exemple lorsque Categories renvoie du HTML/403 ou lorsque `.texteBrut` déclenche un challenge anti-bot sur un runner public.
 
 ## Contrats structurés
 
 Le SDK transforme seulement les structures suffisamment stables pour apporter une vraie valeur :
 
 - SRU devient `SearchResults`, contenant le total et des `DublinCoreRecord` ;
-- les propriétés Dublin Core restent répétables et sont conservées sous forme de tuples ;
-- OAIRecord devient `DocumentMetadata`, avec le Dublin Core, `mode_indexation`, `nqamoyen` lorsqu'ils existent, et le XML original ;
-- ContentSearch devient `ContentSearchResults`, avec `total`, `query`, les items (`p_id`, extrait HTML, score), les dimensions master et, lorsque `page` est fourni, toutes les occurrences `ContentSearchMatch` (`alto_id`, `hpos`, `vpos`, `width`, `height`) ;
-- l'ancien `ContentSearchItem.alto_id` reste disponible pour compatibilité et pointe vers la valeur historique directe ou la première occurrence géométrique.
+- Categories devient `Categories`, avec valeurs typées, compte `howMany` explicitement approximatif, mapping vers les champs CQL lorsqu'il est connu et JSON source conservé ;
+- OAIRecord devient `DocumentMetadata`, avec Dublin Core répétable, informations techniques Gallica et XML source ;
+- Pagination devient `Pagination`, avec nombre de vues, structure de navigation, labels logiques par vue et XML source ;
+- Toc devient `TocDocument` et conserve explicitement la différence entre anciens sommaires HTML et TEI XML ;
+- ContentSearch devient `ContentSearchResults`, avec extraits, pagination, dimensions master et toutes les occurrences `ContentSearchMatch` lorsque la géométrie est demandée ;
+- `ContentSearchItem.alto_id` reste disponible pour compatibilité et pointe vers la valeur historique directe ou la première occurrence géométrique.
 
-Chaque modèle structuré conserve `raw_xml`.
+Les modèles structurés conservent le payload amont brut (`raw_xml` ou `raw_json`) lorsque ce payload fait partie du contrat public.
 
 ## Corpus reprenable
 
 `Gallica.corpus(arks)` normalise et déduplique les ARK en conservant l'ordre. `Corpus.fetch()` peut produire `metadata.json`, `text.txt`, `pages/<vue>/alto.xml` et `pages/<vue>/image.jpg` ainsi qu'un `manifest.jsonl` append-only pour les tentatives réellement exécutées.
 
-La reprise vérifie les artefacts demandés. Avec `resume=True`, un document entièrement présent est sauté ; un document partiel ne récupère que les fichiers manquants. Les fichiers texte et binaires sont écrits via un fichier temporaire puis renommés atomiquement. Une exception ordinaire sur un ARK est enregistrée et le corpus continue ; les interruptions système ne sont pas absorbées.
+Avec `resume=True`, la reprise vérifie le fingerprint de requête, la taille et le SHA-256 des artefacts. Un document partiel ne récupère que les fichiers manquants. Les écritures sont atomiques et les erreurs ordinaires sont isolées par artefact afin de ne pas interrompre les ARK ou artefacts indépendants.
 
-ALTO et images exigent `views=[...]`. Cette contrainte est intentionnelle : le SDK ne transforme jamais une requête de page en téléchargement implicite de l'intégralité d'un document. Les vues sont validées, dédupliquées et conservent leur ordre. `image_width` utilise 1000 px par défaut et réutilise le bucket IIIF HD au-dessus de cette largeur.
+ALTO et images exigent `views=[...]`. Cette contrainte est intentionnelle : le SDK ne transforme jamais une requête de page en téléchargement implicite de l'intégralité d'un document. Le corpus reste synchrone et passe par le transport partagé, sans canal parallèle contournant les quotas.
 
-Le corpus reste synchrone et passe exclusivement par les primitives du SDK. Il ne possède donc aucun transport parallèle susceptible de contourner les buckets de quotas existants.
+## Capacité explicitement non supportée
 
-## Choix d'interface documentaire
-
-- `Document.text()` expose `.texteBrut` au niveau document.
-- `Page.text()` demande exactement une vue via `.texteBrut`.
-- `Document.search_text()` expose une page ContentSearch structurée et accepte `page` pour récupérer la géométrie OCR.
-- `Document.search_text_all()` gère `startResult` paresseusement et respecte un `limit` explicite sans précharger tous les résultats.
-- `Gallica.periodical(ark).issue(date)` formalise uniquement la résolution datée déjà portée par `Issues`; le résultat est un `Document` normal.
-
-## PDF : résultat de la validation
-
-Le PDF n'est volontairement pas exposé. Deux formes issues des usages historiques ont été testées depuis GitHub Actions le 2 septembre 2026 : `f1n1.pdf` et `f1.pdf`. Dans les deux cas, Gallica a répondu HTTP 200 avec `text/html;charset=UTF-8` plutôt qu'un flux commençant par `%PDF`. Le quota PDF public reste connu, mais ne suffit pas à établir un contrat d'accès automatisé reproductible.
+Le PDF n'est volontairement pas exposé par `capabilities()`. Les formes historiques testées depuis GitHub Actions le 2 septembre 2026 ont répondu HTTP 200 avec du HTML plutôt qu'un flux PDF. Le service reste donc `not-supported` dans la référence tant qu'un contrat automatisable reproductible n'est pas établi.
 
 ## Source de vérité opérationnelle
 
-La matrice humaine sert à comprendre rapidement le périmètre. Pour les consommateurs automatisés, les sources de vérité du projet sont :
+La table ci-dessus est une projection générée. Les sources canoniques restent :
 
-- `capabilities()` pour les signatures et contraintes détaillées ;
-- `programmable_reference()` / `reference/gallica-reference.json` pour les services et l'index des capacités ;
-- `evidence()` et `capability_evidence()` pour le graphe de validation ;
-- `evidence_freshness()` pour interpréter l'âge des observations live.
+- `capabilities()` pour appels, paramètres, retours et contraintes ;
+- `programmable_reference()` / `reference/gallica-reference.json` pour les services et leurs statuts ;
+- `capability_evidence()` pour les liens capacité → service → preuve ;
+- `evidence()` pour les déclarations de preuve ;
+- les attestations CI pour les observations datées et leur `service_outcome` ;
+- `operational_contract()` pour la vue résolue destinée aux consommateurs automatisés.
 
-Les contrats initiaux proviennent de la documentation publique api.bnf.fr et des validations réalisées dans `maribakulj/maj-scripts-api.bnf.fr`. Ce dépôt reste indépendant de son code : les connaissances sont reprises, pas son architecture ni ses adaptateurs legacy.
+La documentation BnF et les services publics Gallica restent l'autorité externe. Cette matrice décrit le contrat observé et vérifié par `gallica-sdk`, pas une nouvelle API officielle.
