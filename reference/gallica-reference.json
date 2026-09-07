@@ -17,6 +17,7 @@
     {"id": "text", "name": "Gallica plain OCR text", "kind": "ocr", "status": "environment-limited", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ["https://api.bnf.fr/fr/node/232", "https://api.bnf.fr/fr/api-document-de-gallica"], "notes": ["public quota documented as 5 requests/minute", "texteBrut legitimately returns an HTML representation containing OCR text", "public cold CI runners were redirected to Gallica's anti-bot challenge on 2026-09-05; the SDK detects and rejects that challenge"]},
     {"id": "alto", "name": "Gallica ALTO", "kind": "ocr", "status": "live-validated", "base_url": "https://gallica.bnf.fr/RequestDigitalElement", "documentation": ["https://api.bnf.fr/"], "notes": ["views are 1-based"]},
     {"id": "iiif-image", "name": "Gallica IIIF Image", "kind": "image", "status": "live-validated", "base_url": "https://gallica.bnf.fr/iiif/", "documentation": ["https://api.bnf.fr/", "https://api.bnf.fr/fr/node/232"], "notes": ["1000px is the conservative SDK default", "width above 1000px is handled as high definition"]},
+    {"id": "iiif-presentation", "name": "Gallica IIIF Presentation", "kind": "structure", "status": "environment-limited", "base_url": "https://gallica.bnf.fr/iiif/", "documentation": ["https://api.bnf.fr/fr/api-iiif-de-recuperation-des-images-de-gallica"], "notes": ["BnF technical documentation currently advertises IIIF Presentation version 2", "document manifests use /iiif/ark:/12148/{id}/manifest.json", "the SDK detects Presentation protocol version explicitly and preserves raw JSON", "public cold external access returned HTTP 403 on 2026-09-07; live evidence records that limitation instead of claiming operability"]},
     {"id": "pdf", "name": "Gallica PDF representation", "kind": "document", "status": "not-supported", "base_url": "https://gallica.bnf.fr/ark:/12148/", "documentation": ["https://api.bnf.fr/fr/node/232"], "notes": ["historical automated URL forms returned HTML in public CI validation", "the SDK intentionally exposes no pdf() method"]}
   ],
   "capability_index": [
@@ -30,6 +31,7 @@
     {"id": "document_pagination", "call": "Document.pagination"},
     {"id": "document_page_count", "call": "Document.page_count"},
     {"id": "document_toc", "call": "Document.toc"},
+    {"id": "document_iiif_manifest", "call": "Document.iiif_manifest"},
     {"id": "document_text", "call": "Document.text"},
     {"id": "content_search", "call": "Document.search_text"},
     {"id": "content_search_all", "call": "Document.search_text_all"},
@@ -48,6 +50,7 @@
     {"id": "live.corpus_pages", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live.py::test_public_gallica_corpus_page_artifacts", "description": "Public corpus validation for ALTO/image page artifacts and resume behavior.", "freshness_days": 14, "confidence": "high"},
     {"id": "live.search_pagination", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_search_all_paginates_and_exposes_arks", "description": "Public validation for lazy SRU pagination and search-result ARK handoff to Corpus.", "freshness_days": 14, "confidence": "high"},
     {"id": "live.search_categories", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_categories_exposes_search_refinements", "description": "Public validation for Categories search refinements, approximate counts and API-category to CQL-field mappings.", "freshness_days": 14, "confidence": "high"},
+    {"id": "live.iiif_presentation", "kind": "live-test", "status": "passing-in-ci", "target": "tests/test_live_usability.py::test_public_iiif_presentation_manifest", "description": "Public validation for IIIF Presentation manifest access and explicit protocol-version detection.", "freshness_days": 14, "confidence": "high"},
     {"id": "example.search_to_corpus", "kind": "example", "status": "checked-in", "target": "examples/search_to_corpus.py", "description": "Minimal search-to-corpus workflow intended for humans and coding agents.", "confidence": "reference"}
   ],
   "capability_evidence": [
@@ -61,6 +64,7 @@
     {"capability": "document_pagination", "services": ["pagination"], "evidence": ["live.vertical_slice"], "example": null},
     {"capability": "document_page_count", "services": ["pagination"], "evidence": ["live.vertical_slice"], "example": null},
     {"capability": "document_toc", "services": ["toc"], "evidence": ["live.vertical_slice"], "example": null},
+    {"capability": "document_iiif_manifest", "services": ["iiif-presentation"], "evidence": ["live.iiif_presentation"], "example": null},
     {"capability": "document_text", "services": ["text"], "evidence": ["live.text_access"], "example": null},
     {"capability": "content_search", "services": ["content-search"], "evidence": ["live.document_access"], "example": null},
     {"capability": "content_search_all", "services": ["content-search"], "evidence": ["live.document_access"], "example": null},
