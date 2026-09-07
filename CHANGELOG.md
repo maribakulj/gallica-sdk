@@ -25,11 +25,11 @@ The project follows semantic versioning once a first public release is published
 - live-validation provenance, observation timestamps and evidence freshness classification;
 - resolved operational contracts combining signature, output semantics, expected errors, services, evidence and freshness;
 - `operational_contract()` and `operational_contracts()` plus JSON export support;
-- JSON-first `gallica` CLI for reference/capability inspection, SRU search, metadata and page counts;
+- JSON-first `gallica` CLI for reference/capability inspection, SRU search, Categories, metadata, Pagination, Toc and typed IIIF Presentation/Image inspection;
 - PEP 561 `py.typed` marker for downstream type checkers;
 - user guides for search, documents/pages, periodicals, corpus, quotas, errors and CLI usage;
 - generated canonical capability sections in `README.md` and `docs/capabilities.md` with a CI anti-drift check;
-- executable notebooks for search/metadata and resumable corpus workflows;
+- executable notebooks for search/metadata, resumable corpus workflows, and document structure/IIIF inspection;
 - CI execution of the reference notebooks against public Gallica services;
 - release metadata/tag validator;
 - non-publishing release-candidate workflow that validates and retains wheel/sdist artifacts;
