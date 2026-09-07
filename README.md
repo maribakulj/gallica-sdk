@@ -244,7 +244,7 @@ Document.search_text(query, page=None, start_result=None) -> ContentSearchResult
 Document.search_text_all(query, page=None, limit=None) -> Iterator[ContentSearchItem]
 Page.text() -> str
 Page.alto() -> bytes
-Page.iiif_info() -> dict[str, object]
+Page.iiif_info() -> IIIFImageInfo
 Page.image(width=1000, fmt='jpg') -> bytes
 Periodical.issue(when) -> Document | None
 Corpus.fetch(output, metadata=True, text=False, alto=False, images=False, views=None, image_width=1000, resume=True) -> CorpusReport
