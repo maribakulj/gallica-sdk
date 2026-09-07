@@ -46,7 +46,11 @@ def test_public_gallica_vertical_slice() -> None:
         assert len(alto) > 1000
 
         info = gallica.document("btv1b53066668g").page(1).iiif_info()
-        assert int(info["width"]) > 1000
+        assert info.width > 1000
+        assert info.height > 1000
+        assert info.version == "2"
+        assert info.identifier is not None
+        assert info.raw_json
 
         image = gallica.document("btv1b53066668g").page(1).image(width=1000)
         assert len(image) > 1000
