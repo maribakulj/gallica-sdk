@@ -62,6 +62,8 @@ class EvidenceFreshness(TypedDict):
 
 _LIVE_EVIDENCE_ENV = "GALLICA_LIVE_EVIDENCE_PATH"
 _SERVICE_OUTCOMES = frozenset({"operational", "environment-limited"})
+_TEST_OUTCOMES = frozenset({"passed", "failed"})
+_HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
 
 
 EVIDENCE: tuple[EvidenceSpec, ...] = (
@@ -111,6 +113,23 @@ def _declared_live_evidence() -> dict[str, EvidenceSpec]:
     return {item["id"]: item for item in EVIDENCE if item["kind"] == "live-test"}
 
 
+def _validate_commit(commit: str) -> None:
+    if len(commit) != 40 or any(character not in _HEX_DIGITS for character in commit):
+        raise ValueError("commit must be a full 40-character hexadecimal SHA")
+
+
+def _validate_run_url(run_url: str) -> None:
+    if not run_url.startswith("https://"):
+        raise ValueError("run_url must be an https URL")
+
+
+def _validate_timestamp(value: str, *, field: str) -> None:
+    try:
+        datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"{field} must be an ISO 8601 timestamp") from exc
+
+
 def record_live_evidence(
     evidence_id: str,
     *,
@@ -134,6 +153,7 @@ def record_live_evidence(
         target = Path(env_path)
 
     timestamp = observed_at or datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    _validate_timestamp(timestamp, field="observed_at")
     record: LiveEvidenceObservation = {
         "evidence_id": evidence_id,
         "service_outcome": service_outcome,
@@ -150,6 +170,7 @@ def record_live_evidence(
 def load_live_evidence_observations(path: str | Path) -> tuple[LiveEvidenceObservation, ...]:
     records: list[LiveEvidenceObservation] = []
     seen: set[str] = set()
+    declared = _declared_live_evidence()
     for line_number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
@@ -159,13 +180,13 @@ def load_live_evidence_observations(path: str | Path) -> tuple[LiveEvidenceObser
         evidence_id = str(raw["evidence_id"])
         if evidence_id in seen:
             raise ValueError(f"duplicate live evidence observation: {evidence_id}")
-        if evidence_id not in _declared_live_evidence():
+        if evidence_id not in declared:
             raise ValueError(f"undeclared live evidence observation: {evidence_id}")
         service_outcome = str(raw["service_outcome"])
         if service_outcome not in _SERVICE_OUTCOMES:
             raise ValueError(f"invalid service_outcome for {evidence_id}: {service_outcome}")
         observed_at = str(raw["observed_at"])
-        datetime.fromisoformat(observed_at)
+        _validate_timestamp(observed_at, field=f"observed_at for {evidence_id}")
         record: LiveEvidenceObservation = {
             "evidence_id": evidence_id,
             "service_outcome": service_outcome,
@@ -186,10 +207,8 @@ def build_evidence_attestation(
     observations: tuple[LiveEvidenceObservation, ...],
     generated_at: str | None = None,
 ) -> EvidenceAttestation:
-    if len(commit) != 40:
-        raise ValueError("commit must be a full 40-character SHA")
-    if not run_url.startswith("https://"):
-        raise ValueError("run_url must be an https URL")
+    _validate_commit(commit)
+    _validate_run_url(run_url)
 
     declared = _declared_live_evidence()
     observed: dict[str, LiveEvidenceObservation] = {}
@@ -202,7 +221,7 @@ def build_evidence_attestation(
         service_outcome = observation["service_outcome"]
         if service_outcome not in _SERVICE_OUTCOMES:
             raise ValueError(f"invalid service_outcome for {evidence_id}: {service_outcome}")
-        datetime.fromisoformat(observation["observed_at"])
+        _validate_timestamp(observation["observed_at"], field=f"observed_at for {evidence_id}")
         observed[evidence_id] = observation
 
     missing = set(declared) - set(observed)
@@ -210,6 +229,7 @@ def build_evidence_attestation(
         raise ValueError(f"missing live evidence observations: {', '.join(sorted(missing))}")
 
     timestamp = generated_at or datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    _validate_timestamp(timestamp, field="generated_at")
     records: list[EvidenceAttestationRecord] = []
     for item in EVIDENCE:
         if item["kind"] != "live-test":
@@ -239,40 +259,73 @@ def build_evidence_attestation(
 
 def load_evidence_attestation(path: str | Path) -> EvidenceAttestation:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise TypeError("attestation must be an object")
     schema_version = str(payload.get("schema_version", ""))
     if schema_version not in {"1.0", "2.0"}:
         raise ValueError("unsupported evidence attestation schema")
+
+    generated_at = str(payload["generated_at"])
+    commit = str(payload["commit"])
+    run_url = str(payload["run_url"])
+    _validate_timestamp(generated_at, field="generated_at")
+    _validate_commit(commit)
+    _validate_run_url(run_url)
+
     records_raw = payload.get("records")
     if not isinstance(records_raw, list):
         raise TypeError("attestation records must be a list")
     records: list[EvidenceAttestationRecord] = []
+    seen: set[str] = set()
+    declared = _declared_live_evidence()
     for raw in records_raw:
         if not isinstance(raw, dict):
             raise TypeError("attestation record must be an object")
+        evidence_id = str(raw["evidence_id"])
+        if evidence_id in seen:
+            raise ValueError(f"duplicate attestation record: {evidence_id}")
+        if evidence_id not in declared:
+            raise ValueError(f"undeclared attestation evidence id: {evidence_id}")
+
         if schema_version == "1.0":
             test_outcome = str(raw["outcome"])
             service_outcome = "unknown"
         else:
             test_outcome = str(raw["test_outcome"])
             service_outcome = str(raw["service_outcome"])
+            if service_outcome not in _SERVICE_OUTCOMES:
+                raise ValueError(f"invalid service_outcome for {evidence_id}: {service_outcome}")
+        if test_outcome not in _TEST_OUTCOMES:
+            raise ValueError(f"invalid test_outcome for {evidence_id}: {test_outcome}")
+
+        observed_at = str(raw["observed_at"])
+        record_commit = str(raw["commit"])
+        record_run_url = str(raw["run_url"])
+        _validate_timestamp(observed_at, field=f"observed_at for {evidence_id}")
+        if record_commit != commit:
+            raise ValueError(f"attestation record commit mismatch for {evidence_id}")
+        if record_run_url != run_url:
+            raise ValueError(f"attestation record run_url mismatch for {evidence_id}")
+
         record: EvidenceAttestationRecord = {
-            "evidence_id": str(raw["evidence_id"]),
+            "evidence_id": evidence_id,
             "test_outcome": test_outcome,
             "service_outcome": service_outcome,
-            "observed_at": str(raw["observed_at"]),
-            "commit": str(raw["commit"]),
-            "run_url": str(raw["run_url"]),
+            "observed_at": observed_at,
+            "commit": record_commit,
+            "run_url": record_run_url,
             "confidence": str(raw["confidence"]),
         }
         detail = raw.get("detail")
         if detail is not None:
             record["detail"] = str(detail)
         records.append(record)
+        seen.add(evidence_id)
     return {
         "schema_version": schema_version,
-        "generated_at": str(payload["generated_at"]),
-        "commit": str(payload["commit"]),
-        "run_url": str(payload["run_url"]),
+        "generated_at": generated_at,
+        "commit": commit,
+        "run_url": run_url,
         "records": tuple(records),
     }
 
