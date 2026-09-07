@@ -8,7 +8,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 from gallica.agent import capabilities
-from gallica.evidence import build_evidence_attestation, evidence_freshness
+from gallica.evidence import build_evidence_attestation, evidence, evidence_freshness
 from gallica.reference import REFERENCE_SCHEMA_VERSION, programmable_reference
 
 
@@ -22,6 +22,18 @@ def _reference_schema() -> dict[str, object]:
     payload = json.loads(Path("reference/schema.json").read_text(encoding="utf-8"))
     assert isinstance(payload, dict)
     return payload
+
+
+def _observations() -> tuple[dict[str, str], ...]:
+    return tuple(
+        {
+            "evidence_id": item["id"],
+            "service_outcome": "operational",
+            "observed_at": "2026-09-05T10:00:00Z",
+        }
+        for item in evidence()
+        if item["kind"] == "live-test"
+    )
 
 
 def test_checked_in_reference_matches_canonical_python() -> None:
@@ -104,7 +116,13 @@ def test_live_validated_network_capabilities_have_live_evidence() -> None:
             assert set(item["evidence"]) & live_ids, item["capability"]
 
 
-def test_historical_evidence_provenance_is_not_treated_as_current_attestation() -> None:
+def test_evidence_declarations_are_not_run_specific() -> None:
+    reference = programmable_reference()
+    for item in reference["evidence"]:
+        assert "observed_at" not in item
+        assert "observed_commit" not in item
+        assert "observed_run" not in item
+
     current = {item["id"]: item for item in evidence_freshness(as_of=date(2026, 9, 5))}
     assert current["live.vertical_slice"]["state"] == "unknown"
     assert current["live.vertical_slice"]["observed_at"] is None
@@ -115,7 +133,8 @@ def test_ci_attestation_drives_freshness_without_rewriting_declarations() -> Non
     attestation = build_evidence_attestation(
         commit="a" * 40,
         run_url="https://github.com/example/repo/actions/runs/42",
-        observed_at="2026-09-05T10:00:00Z",
+        observations=_observations(),
+        generated_at="2026-09-05T10:01:00Z",
     )
     fresh = {
         item["id"]: item
@@ -128,6 +147,7 @@ def test_ci_attestation_drives_freshness_without_rewriting_declarations() -> Non
     assert fresh["live.vertical_slice"]["state"] == "fresh"
     assert fresh["live.vertical_slice"]["age_days"] == 5
     assert fresh["live.vertical_slice"]["observed_at"] == "2026-09-05T10:00:00Z"
+    assert fresh["live.vertical_slice"]["service_outcome"] == "operational"
     assert stale["live.vertical_slice"]["state"] == "stale"
     assert stale["live.vertical_slice"]["age_days"] == 26
 
