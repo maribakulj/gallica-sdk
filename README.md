@@ -91,7 +91,7 @@ with Gallica() as gallica:
     image = page.image(width=1000)
 ```
 
-`Pagination` conserve la structure de navigation et les labels logiques par vue. `TocDocument` préserve la différence entre anciens sommaires HTML et réponses TEI XML. `IIIFPresentationManifest` détecte explicitement Presentation v2 ou v3, conserve le JSON source et ne transforme pas artificiellement un manifeste v2 en v3. La documentation technique BnF consultée pour ce contrat annonce actuellement Presentation v2. `ContentSearch` conserve les extraits, les dimensions master et toutes les boîtes OCR retournées pour une vue.
+`Pagination` conserve la structure de navigation et les labels logiques par vue. `TocDocument` préserve la différence entre anciens sommaires HTML et réponses TEI XML. `IIIFPresentationManifest` détecte explicitement Presentation v2 ou v3, conserve le JSON source et ne transforme pas artificiellement un manifeste v2 en v3. `IIIFImageInfo` expose dimensions et marqueurs de protocole sans inventer de version lorsqu'`info.json` ne s'auto-identifie pas. `ContentSearch` conserve les extraits, les dimensions master et toutes les boîtes OCR retournées pour une vue.
 
 Guide : [`docs/documents.md`](docs/documents.md).
 
@@ -149,12 +149,17 @@ Le package installe une CLI volontairement mince et JSON-first :
 ```bash
 gallica capabilities
 gallica contract page_alto
-gallica search 'gallica all "Verdun"' --maximum-records 5
+gallica search 'gallica all "Verdun"' --limit 5
+gallica categories 'gallica all "Verdun"'
 gallica metadata bpt6k5738219s
 gallica page-count bpt6k5738219s
+gallica pagination bpt6k5738219s
+gallica toc bpt6k97540464
+gallica iiif-manifest btv1b550076223
+gallica iiif-info btv1b53066668g 1
 ```
 
-Elle réutilise le SDK au lieu de maintenir une deuxième logique réseau. Guide : [`docs/cli.md`](docs/cli.md).
+Elle réutilise exclusivement les primitives du SDK au lieu de maintenir une deuxième logique réseau. Guide : [`docs/cli.md`](docs/cli.md).
 
 ## Référence programmable
 
@@ -210,10 +215,11 @@ Voir [`docs/quotas.md`](docs/quotas.md) et [`docs/errors.md`](docs/errors.md).
 
 ## Notebooks exécutables
 
-Deux notebooks de référence sont exécutés en CI contre Gallica public :
+Trois notebooks de référence sont exécutés en CI contre Gallica public :
 
 - [`notebooks/01_search_and_metadata.ipynb`](notebooks/01_search_and_metadata.ipynb) : SRU + métadonnées OAIRecord ;
-- [`notebooks/02_resumable_corpus.ipynb`](notebooks/02_resumable_corpus.ipynb) : corpus minimal + reprise.
+- [`notebooks/02_resumable_corpus.ipynb`](notebooks/02_resumable_corpus.ipynb) : corpus minimal + reprise ;
+- [`notebooks/03_document_structure_and_iiif.ipynb`](notebooks/03_document_structure_and_iiif.ipynb) : Pagination, Toc, IIIF Presentation et IIIF Image `info.json`.
 
 ```bash
 python -m pip install -e '.[docs]'
