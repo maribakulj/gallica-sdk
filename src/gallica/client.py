@@ -21,6 +21,7 @@ from .models import (
     ContentSearchResults,
     DocumentMetadata,
     DublinCoreRecord,
+    IIIFPresentationManifest,
     Pagination,
     SearchResults,
     TocDocument,
@@ -155,6 +156,103 @@ def _validate_toc(response: httpx.Response) -> TocDocument:
     return TocDocument(format="tei", raw=response.text, well_formed=True)
 
 
+def _iiif_contexts(raw_context: object) -> tuple[str, ...]:
+    if raw_context is None:
+        return ()
+    if isinstance(raw_context, str):
+        return (raw_context,)
+    if isinstance(raw_context, list) and all(isinstance(item, str) for item in raw_context):
+        return tuple(raw_context)
+    raise GallicaResponseError("IIIF Presentation manifest has invalid @context")
+
+
+def _iiif_version_from_context(contexts: tuple[str, ...]) -> str | None:
+    versions: set[str] = set()
+    for context in contexts:
+        lowered = context.lower()
+        if "/presentation/2/" in lowered:
+            versions.add("2")
+        if "/presentation/3/" in lowered:
+            versions.add("3")
+    if len(versions) > 1:
+        raise GallicaResponseError("IIIF Presentation manifest mixes v2 and v3 contexts")
+    return next(iter(versions), None)
+
+
+def _iiif_version_from_structure(payload: dict[str, object]) -> str | None:
+    is_v2 = payload.get("@type") == "sc:Manifest" or "sequences" in payload
+    is_v3 = payload.get("type") == "Manifest" or "items" in payload
+    if is_v2 and is_v3:
+        raise GallicaResponseError("IIIF Presentation manifest mixes v2 and v3 structure")
+    if is_v2:
+        return "2"
+    if is_v3:
+        return "3"
+    return None
+
+
+def _validate_iiif_manifest(response: httpx.Response) -> IIIFPresentationManifest:
+    _reject_html(response, service="IIIF Presentation manifest")
+    try:
+        payload: object = response.json()
+    except ValueError as exc:
+        raise GallicaResponseError("IIIF Presentation manifest is not valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise GallicaResponseError("IIIF Presentation manifest is not a JSON object")
+
+    manifest = cast(dict[str, object], payload)
+    contexts = _iiif_contexts(manifest.get("@context"))
+    context_version = _iiif_version_from_context(contexts)
+    structure_version = _iiif_version_from_structure(manifest)
+    if context_version is not None and structure_version is not None and context_version != structure_version:
+        raise GallicaResponseError("IIIF Presentation manifest context conflicts with its structure")
+    version = context_version or structure_version or "unknown"
+
+    identifier: str | None
+    canvas_count: int | None
+    if version == "2":
+        raw_identifier = manifest.get("@id")
+        if not isinstance(raw_identifier, str) or not raw_identifier:
+            raise GallicaResponseError("IIIF Presentation v2 manifest lacks a valid @id")
+        identifier = raw_identifier
+        sequences = manifest.get("sequences")
+        if not isinstance(sequences, list):
+            raise GallicaResponseError("IIIF Presentation v2 manifest lacks a sequences array")
+        canvas_count = 0
+        for index, sequence in enumerate(sequences):
+            if not isinstance(sequence, dict):
+                raise GallicaResponseError(f"IIIF Presentation v2 sequence {index} is not an object")
+            canvases = sequence.get("canvases")
+            if not isinstance(canvases, list):
+                raise GallicaResponseError(f"IIIF Presentation v2 sequence {index} lacks canvases")
+            canvas_count += len(canvases)
+    elif version == "3":
+        raw_identifier = manifest.get("id")
+        if not isinstance(raw_identifier, str) or not raw_identifier:
+            raise GallicaResponseError("IIIF Presentation v3 manifest lacks a valid id")
+        identifier = raw_identifier
+        items = manifest.get("items")
+        if not isinstance(items, list):
+            raise GallicaResponseError("IIIF Presentation v3 manifest lacks an items array")
+        canvas_count = len(items)
+    else:
+        raw_identifier = manifest.get("id", manifest.get("@id"))
+        if raw_identifier is not None and not isinstance(raw_identifier, str):
+            raise GallicaResponseError("IIIF Presentation manifest has an invalid identifier")
+        if not contexts and raw_identifier is None:
+            raise GallicaResponseError("JSON payload is not recognizable as an IIIF Presentation manifest")
+        identifier = raw_identifier
+        canvas_count = None
+
+    return IIIFPresentationManifest(
+        version=cast("str", version),
+        identifier=identifier,
+        context=contexts,
+        canvas_count=canvas_count,
+        raw_json=response.text,
+    )
+
+
 class Gallica:
     """Entry point for the public Gallica APIs."""
 
@@ -269,6 +367,12 @@ class Gallica:
             params={"ark": f"ark:/12148/{normalize_ark(ark)}"},
         )
         return _validate_toc(response)
+
+    def _iiif_manifest(self, ark: str) -> IIIFPresentationManifest:
+        response = self._transport.get(
+            f"{BASE_URL}/iiif/{ark_uri(ark)}/manifest.json"
+        )
+        return _validate_iiif_manifest(response)
 
     def _text(self, ark: str, *, start_view: int | None = None, nviews: int | None = None) -> str:
         root = f"{BASE_URL}/ark:/12148/{normalize_ark(ark)}"
