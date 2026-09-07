@@ -31,7 +31,7 @@ La CI exécute `python scripts/generate_docs.py --check` et échoue si le bloc g
 | `content_search_all` | `Document.search_text_all(query, page=None, limit=None) -> Iterator[ContentSearchItem]` | services/ContentSearch | `Iterator[ContentSearchItem]` | live-validated | page must be >= 1 when supplied<br>limit must be >= 1 when supplied<br>pagination is lazy and follows the service's 10-item page cap |
 | `page_text` | `Page.text() -> str` | .texteBrut | `str` | environment-limited | public quota documented as 5 requests/minute |
 | `page_alto` | `Page.alto() -> bytes` | RequestDigitalElement E=ALTO | `bytes` | live-validated | view numbers are 1-based |
-| `page_iiif_info` | `Page.iiif_info() -> dict[str, object]` | IIIF Image info.json | `dict[str, object]` | live-validated | Image API is distinct from IIIF Presentation |
+| `page_iiif_info` | `Page.iiif_info() -> IIIFImageInfo` | IIIF Image info.json | `IIIFImageInfo` | live-validated | Image API is distinct from IIIF Presentation<br>the SDK detects Image API version from advertised contexts/profiles<br>positive width and height are required<br>raw JSON remains available as raw_json |
 | `page_image` | `Page.image(width=1000, fmt='jpg') -> bytes` | IIIF Image | `bytes` | live-validated | width must be >= 1<br>width > 1000 uses the HD rate bucket<br>1000px is the recommended default |
 | `periodical_issue` | `Periodical.issue(when) -> Document \| None` | services/Issues | `Document \| None` | live-validated | resolution uses dayOfYear from the Issues response |
 | `corpus_fetch` | `Corpus.fetch(output, metadata=True, text=False, alto=False, images=False, views=None, image_width=1000, resume=True) -> CorpusReport` | composition of supported SDK primitives | `CorpusReport` | mixed: environment-limited, live-validated | ALTO or images require explicit views<br>there is no implicit all-pages mode<br>resume validates request fingerprint, byte size and SHA-256<br>ordinary per-artifact failures do not stop independent artifacts or later ARKs |
@@ -55,6 +55,7 @@ Le SDK transforme seulement les structures suffisamment stables pour apporter un
 - Pagination devient `Pagination`, avec nombre de vues, structure de navigation, labels logiques par vue et XML source ;
 - Toc devient `TocDocument` et conserve explicitement la différence entre anciens sommaires HTML et TEI XML ;
 - IIIF Presentation devient `IIIFPresentationManifest`, avec version détectée explicitement, identifiant, contextes, nombre de canvases et JSON source, sans conversion v2 vers v3 ;
+- IIIF Image `info.json` devient `IIIFImageInfo`, avec version détectée, identifiant, contextes, protocole, profils annoncés, dimensions et JSON source ;
 - ContentSearch devient `ContentSearchResults`, avec extraits, pagination, dimensions master et toutes les occurrences `ContentSearchMatch` lorsque la géométrie est demandée ;
 - `ContentSearchItem.alto_id` reste disponible pour compatibilité et pointe vers la valeur historique directe ou la première occurrence géométrique.
 
