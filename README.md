@@ -165,6 +165,8 @@ reference/
 └── schema.json
 ```
 
+Le manifeste checked-in est actuellement en `schema_version: 2.0`.
+
 `programmable_reference()` relie capacités, services, statuts, preuves et invariants. `capabilities()` décrit les appels publics, paramètres, retours et contraintes. `operational_contract()` résout ces informations avec la sémantique de sortie, les erreurs attendues et la preuve associée.
 
 ```python
