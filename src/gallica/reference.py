@@ -70,8 +70,9 @@ def programmable_reference() -> ReferenceSpec:
         "invariants": (
             "A network capability is not marked live-validated without a relevant public live test.",
             "Environment-limited services remain explicit when upstream access controls prevent reproducible cold-runner validation.",
-            "Every live-test evidence record carries an observation timestamp, tested commit and CI run.",
-            "Evidence freshness is evaluated separately from support status and can become stale without changing the historical observation.",
+            "Live-test evidence declarations are observation-free; run-specific provenance belongs to CI attestations.",
+            "Every current attestation record carries an observation timestamp, tested commit, CI run, test outcome and service outcome.",
+            "Evidence freshness is evaluated separately from service outcome and support status.",
             "Every service/evidence reference in capability_evidence must resolve in this manifest.",
             "Every public capability must have exactly one capability_evidence record.",
             "Operational contracts resolve canonical capabilities, services and evidence rather than duplicating them as independent truth.",
