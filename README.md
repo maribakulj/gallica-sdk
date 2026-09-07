@@ -11,7 +11,7 @@ Le projet ne remplace ni les services Gallica ni la documentation BnF, qui reste
 
 ## Statut
 
-**Version de développement : `0.2.0.dev0`.** Aucune release stable n'est encore publiée.
+**0.2.0.dev0 — version de développement.** Aucune release stable n'est encore publiée.
 
 Le dépôt couvre aujourd'hui SRU, Categories, OAIRecord, Pagination, Toc, Issues, ContentSearch, OCR texte, ALTO, IIIF Image et les compositions `Document`, `Page`, `Periodical` et `Corpus`.
 
