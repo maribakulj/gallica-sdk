@@ -1,21 +1,21 @@
 # gallica-sdk
 
-`gallica-sdk` est une couche de référence programmable et vérifiée pour accéder aux services publics Gallica.
+`gallica-sdk` est une couche de référence programmable et vérifiée pour les services publics Gallica.
 
-Le projet fournit deux artefacts liés :
+Le dépôt fournit deux choses liées :
 
 1. un SDK Python léger pour notebooks, scripts et pipelines ;
-2. une représentation machine-readable des capacités, contraintes, services et preuves Gallica afin qu'un agent puisse raisonner sur une base validée plutôt que reconstruire l'API à chaque session.
+2. une référence machine-readable des capacités, contraintes, services et preuves afin qu'un humain ou un agent puisse raisonner sur un contrat explicite plutôt que reconstruire l'API à chaque usage.
 
-Le projet ne crée pas une nouvelle API réseau et ne remplace pas la documentation BnF. Les services publics et la documentation BnF restent l'autorité ; `gallica-sdk` fournit une connaissance opérationnelle testée de leur utilisation.
+Le projet ne remplace ni les services Gallica ni la documentation BnF, qui restent l'autorité externe. Il formalise ce qui a été implémenté, testé et observé publiquement.
 
 ## Statut
 
-**0.2.0.dev0 — corpus reprenable avec provenance, recherche paginée, packaging vérifié, CLI JSON, référence programmable, contrats opérationnels résolus, attestations CI et notebooks exécutés.**
+**Version de développement : `0.2.0.dev0`.** Aucune release stable n'est encore publiée.
 
-Aucune release stable n'est encore publiée. Le dépôt prépare sa première release publique.
+Le dépôt couvre aujourd'hui SRU, Categories, OAIRecord, Pagination, Toc, Issues, ContentSearch, OCR texte, ALTO, IIIF Image et les compositions `Document`, `Page`, `Periodical` et `Corpus`.
 
-## Démarrage
+## Installation
 
 ```bash
 python -m venv .venv
@@ -23,7 +23,9 @@ source .venv/bin/activate  # PowerShell : .venv\Scripts\Activate.ps1
 python -m pip install -e .
 ```
 
-Python 3.11+ est requis.
+Python 3.11+ est requis. Guide détaillé : [`docs/getting-started.md`](docs/getting-started.md).
+
+## Démarrage rapide
 
 ```python
 from gallica import Gallica
@@ -31,22 +33,30 @@ from gallica import Gallica
 with Gallica() as gallica:
     document = gallica.document("ark:/12148/bpt6k5738219s")
     metadata = document.metadata()
+    pagination = document.pagination()
+
     print(metadata.record.title)
-    print(document.page_count())
+    print(pagination.image_views)
 ```
 
-Guide : [`docs/getting-started.md`](docs/getting-started.md).
+Les ARK peuvent être fournis sous forme d'identifiant nu, d'`ark:/12148/...` ou d'URL Gallica canonique.
 
-## Recherche
+## Recherche SRU et Categories
 
 ```python
+from gallica import Gallica
+
 with Gallica() as gallica:
     results = gallica.search('gallica all "Verdun"', maximum_records=10)
     for record in results:
         print(record.ark, record.title)
+
+    categories = gallica.categories('gallica all "Verdun"')
+    for value in categories.for_category("language"):
+        print(value.clean_value, value.approximate_count, value.cql_field)
 ```
 
-Pour parcourir plusieurs pages sans manipuler `startRecord` :
+Pour parcourir plusieurs pages SRU sans manipuler `startRecord` :
 
 ```python
 with Gallica() as gallica:
@@ -54,30 +64,35 @@ with Gallica() as gallica:
         print(record.ark, record.title)
 ```
 
-Les champs Dublin Core restent répétables et le XML source est conservé dans `raw_xml`. Guide : [`docs/search.md`](docs/search.md).
+Les champs Dublin Core restent répétables, le XML source SRU est conservé, et Categories expose explicitement des comptes `howMany` approximatifs. Le service Categories peut être `environment-limited` depuis certains runners publics ; le SDK rejette alors les réponses HTML/403 au lieu de les interpréter comme du JSON valide.
+
+Guide : [`docs/search.md`](docs/search.md).
 
 ## Documents et pages
 
 ```python
 with Gallica() as gallica:
     document = gallica.document("bpt6k5460422k")
+
+    metadata = document.metadata()
+    pagination = document.pagination()
+    page_count = document.page_count()
+    toc = document.toc()
+
     text = document.text()
     matches = document.search_text("hugo")
-
-    for item in document.search_text_all("hugo", limit=25):
-        print(item.page_id)
-
     geometry = document.search_text("hugo", page=173)
-    for match in geometry.items[0].matches:
-        print(match.hpos, match.vpos, match.width, match.height)
 
     page = document.page(3)
+    page_text = page.text()
     alto = page.alto()
     info = page.iiif_info()
     image = page.image(width=1000)
 ```
 
-`ContentSearch` conserve les extraits HTML, les dimensions master et toutes les boîtes OCR retournées pour une vue. Guide : [`docs/documents.md`](docs/documents.md).
+`Pagination` conserve la structure de navigation et les labels logiques par vue. `TocDocument` préserve la différence entre anciens sommaires HTML et réponses TEI XML. `ContentSearch` conserve les extraits, les dimensions master et toutes les boîtes OCR retournées pour une vue.
+
+Guide : [`docs/documents.md`](docs/documents.md).
 
 ## Périodiques
 
@@ -122,11 +137,13 @@ with Gallica() as gallica:
     )
 ```
 
-Les écritures sont atomiques. La reprise vérifie fingerprint de requête, taille et SHA-256 au lieu de considérer qu'un fichier présent est nécessairement valable. Les erreurs sont isolées par artefact : un échec de métadonnée n'empêche pas un ALTO ou une image indépendants du même ARK, et les succès partiels restent réutilisables au prochain `resume`. Le manifest conserve également paramètres, version SDK et provenance des échecs. Guide : [`docs/corpus.md`](docs/corpus.md).
+Les écritures sont atomiques. La reprise vérifie fingerprint de requête, taille et SHA-256. Les erreurs ordinaires sont isolées par artefact, de sorte qu'un échec n'empêche pas les artefacts ou ARK indépendants de continuer. Le manifest conserve paramètres, version SDK, checksums et provenance d'échec.
+
+Guide : [`docs/corpus.md`](docs/corpus.md).
 
 ## CLI
 
-Le package installe une CLI volontairement mince, JSON-first, qui réutilise le même SDK plutôt que réimplémenter une seconde logique réseau :
+Le package installe une CLI volontairement mince et JSON-first :
 
 ```bash
 gallica capabilities
@@ -136,11 +153,11 @@ gallica metadata bpt6k5738219s
 gallica page-count bpt6k5738219s
 ```
 
-Elle est testée après installation isolée du wheel et du sdist. Guide : [`docs/cli.md`](docs/cli.md).
+Elle réutilise le SDK au lieu de maintenir une deuxième logique réseau. Guide : [`docs/cli.md`](docs/cli.md).
 
 ## Référence programmable
 
-Un agent n'a pas besoin d'installer le package pour découvrir le périmètre déclaré :
+Le dépôt contient une représentation machine-readable du contrat :
 
 ```text
 reference/
@@ -148,34 +165,27 @@ reference/
 └── schema.json
 ```
 
-Le manifeste est actuellement en `schema_version: 2.0`. Il expose les services, l'index des capacités, les preuves live, leur provenance historique et les invariants du projet, ainsi que les commandes d'export des contrats détaillés et opérationnels. Le JSON checked-in est validé réellement contre son JSON Schema en CI.
-
-### Contrat minimal
-
-`capabilities()` fournit la surface compacte : appel Python, paramètres, type de retour et contraintes.
+`programmable_reference()` relie capacités, services, statuts, preuves et invariants. `capabilities()` décrit les appels publics, paramètres, retours et contraintes. `operational_contract()` résout ces informations avec la sémantique de sortie, les erreurs attendues et la preuve associée.
 
 ```python
-from gallica import capabilities
+from gallica import capabilities, operational_contract
 
 for capability in capabilities():
     print(capability["id"], capability["call"])
+
+contract = operational_contract("page_alto")
+print(contract["services"])
+print(contract["freshness"])
 ```
 
-### Contrat opérationnel résolu
+### Preuves live et attestations
 
-Pour un agent qui doit décider comment exécuter réellement une opération, `operational_contract()` résout en une structure unique :
+Les déclarations de preuve checked-in ne contiennent plus de timestamp ou de run historique présenté comme état courant. Pendant la suite live, chaque preuve enregistre une observation réelle avec un `service_outcome` distinct du résultat pytest :
 
-- signature et paramètres ;
-- contraintes ;
-- sémantique de sortie ;
-- media type source ;
-- erreurs attendues ;
-- services Gallica concernés ;
-- preuves live ;
-- fraîcheur de ces preuves ;
-- exemple lié lorsqu'il existe.
+- `operational` si le service a effectivement répondu selon le contrat ;
+- `environment-limited` si le test passe parce que le SDK a correctement identifié une limitation amont reproductible, par exemple un challenge anti-bot ou une réponse HTML/403.
 
-Sans attestation CI explicite, la fraîcheur live est `unknown` : un vieux timestamp checked-in n'est plus présenté comme état courant. Une attestation générée après succès des tests live peut être chargée et fournie au contrat :
+Après succès de la suite complète, la CI génère `evidence-attestation.json`, lié au commit et au run exacts. Les attestations 2.0 séparent `test_outcome` et `service_outcome` ; les anciennes attestations 1.0 restent lisibles sans être promues artificiellement en preuve d'opérabilité.
 
 ```python
 from gallica import load_evidence_attestation, operational_contract
@@ -185,48 +195,59 @@ contract = operational_contract("page_alto", attestation=attestation)
 print(contract["freshness"])
 ```
 
-La CI génère `evidence-attestation.json` uniquement après réussite de la suite live et l'archive comme artefact GitHub Actions. Un workflow séparé revalide ces preuves chaque semaine même en l'absence de nouveau commit.
+Documentation agent : [`docs/agents.md`](docs/agents.md). Modèle de preuve : [`docs/evidence.md`](docs/evidence.md).
 
-Tous les contrats peuvent être exportés en JSON :
+## Quotas, validation des réponses et erreurs
 
-```bash
-python scripts/export_capabilities.py > capabilities.json
-python scripts/export_operational_contracts.py > operational-contracts.json
-python scripts/export_reference.py > reference.json
-```
+Le transport partagé centralise throttling, retries bornés et `Retry-After`. Un HTTP 200 n'est pas accepté aveuglément : ALTO, IIIF et réponses structurées sont validés avant d'être exposés.
 
-Le contrat opérationnel est assemblé depuis les sources canoniques existantes. Il ne constitue pas une seconde vérité indépendante qui recopierait services et preuves.
+`.texteBrut` peut légitimement être servi en HTML, mais certains runners publics sont redirigés vers un challenge anti-bot. Le SDK détecte ce cas et le service reste explicitement `environment-limited` dans la référence.
 
-Documentation agent : [`docs/agents.md`](docs/agents.md). Preuves, attestations et fraîcheur : [`docs/evidence.md`](docs/evidence.md).
-
-## Quotas et erreurs
-
-Le transport partagé centralise les retries, `Retry-After` et les buckets de throttling. Il rejoue aussi les erreurs réseau transitoires de manière bornée. Un HTTP 200 n'est pas accepté aveuglément : ALTO, IIIF et réponses structurées sont validés sémantiquement.
-
-`.texteBrut` a un comportement particulier : sa représentation publique peut légitimement être HTML, mais les runners publics peuvent être redirigés vers un challenge anti-bot. Le SDK détecte ce challenge au lieu de l'enregistrer comme OCR et le service est donc déclaré `environment-limited` dans la référence.
-
-- quotas : [`docs/quotas.md`](docs/quotas.md) ;
-- erreurs et limitations : [`docs/errors.md`](docs/errors.md).
+Voir [`docs/quotas.md`](docs/quotas.md) et [`docs/errors.md`](docs/errors.md).
 
 ## Notebooks exécutables
 
-Deux notebooks de référence sont exécutés réellement en CI contre Gallica public :
+Deux notebooks de référence sont exécutés en CI contre Gallica public :
 
 - [`notebooks/01_search_and_metadata.ipynb`](notebooks/01_search_and_metadata.ipynb) : SRU + métadonnées OAIRecord ;
-- [`notebooks/02_resumable_corpus.ipynb`](notebooks/02_resumable_corpus.ipynb) : corpus minimal + preuve de reprise sans nouveau téléchargement.
-
-Pour les exécuter localement :
+- [`notebooks/02_resumable_corpus.ipynb`](notebooks/02_resumable_corpus.ipynb) : corpus minimal + reprise.
 
 ```bash
 python -m pip install -e '.[docs]'
 python scripts/execute_notebooks.py
 ```
 
-## PDF
-
-Le SDK ne fournit pas `pdf()`. Les formes historiques `f1n1.pdf` et `f1.pdf` testées le 2 septembre 2026 ont répondu HTTP 200 avec du HTML depuis un runner GitHub public. PDF reste donc explicitement `not-supported` tant qu'un contrat automatisable reproductible n'est pas établi.
-
 ## Surface publique actuelle
+
+La partie mécanique de cette section est générée depuis `capabilities()`. Une nouvelle capacité canonique ajoutée au code sans régénération de la documentation fait échouer la CI.
+
+### Capacités canoniques
+
+<!-- BEGIN GENERATED: canonical-capabilities -->
+```text
+Gallica.document(ark) -> Document
+Gallica.periodical(ark) -> Periodical
+Gallica.corpus(arks) -> Corpus
+Gallica.search(query, start_record=1, maximum_records=50) -> SearchResults
+Gallica.categories(query) -> Categories
+Gallica.search_all(query, limit=None, page_size=50) -> Iterator[DublinCoreRecord]
+Document.metadata() -> DocumentMetadata
+Document.pagination() -> Pagination
+Document.page_count() -> int
+Document.toc() -> TocDocument
+Document.text() -> str
+Document.search_text(query, page=None, start_result=None) -> ContentSearchResults
+Document.search_text_all(query, page=None, limit=None) -> Iterator[ContentSearchItem]
+Page.text() -> str
+Page.alto() -> bytes
+Page.iiif_info() -> dict[str, object]
+Page.image(width=1000, fmt='jpg') -> bytes
+Periodical.issue(when) -> Document | None
+Corpus.fetch(output, metadata=True, text=False, alto=False, images=False, views=None, image_width=1000, resume=True) -> CorpusReport
+```
+<!-- END GENERATED: canonical-capabilities -->
+
+### Référence, preuves et helpers publics
 
 ```text
 __version__ -> str
@@ -240,67 +261,55 @@ build_evidence_attestation(...) -> EvidenceAttestation
 load_evidence_attestation(path) -> EvidenceAttestation
 evidence_freshness(attestation=...) -> tuple[EvidenceFreshness, ...]
 Gallica.capabilities() -> tuple[CapabilitySpec, ...]
-Gallica.search() -> SearchResults
-Gallica.search_all() -> Iterator[DublinCoreRecord]
-Gallica.document() -> Document
-Gallica.periodical() -> Periodical
-Gallica.corpus() -> Corpus
 SearchResults.arks -> tuple[str, ...]
 SearchResults.write_jsonl() -> Path
 ContentSearchMatch -> OCR rectangle
-Document.metadata() -> DocumentMetadata
-Document.page_count() -> int
-Document.text() -> str
-Document.search_text() -> ContentSearchResults
-Document.search_text_all() -> Iterator[ContentSearchItem]
-Document.page() -> Page
-Page.text() -> str
-Page.alto() -> bytes
-Page.iiif_info() -> dict
-Page.image() -> bytes
-Periodical.issue() -> Document | None
-Corpus.fetch() -> CorpusReport
 CorpusItemResult.failure_details -> tuple[CorpusArtifactFailure, ...]
 CorpusItemResult.retryable -> bool
 CorpusReport.retryable -> tuple[CorpusItemResult, ...]
 ```
+
+La matrice humaine générée avec services, statuts et contraintes se trouve dans [`docs/capabilities.md`](docs/capabilities.md).
 
 ## Validation
 
 ```bash
 ruff check src tests
 mypy src/gallica
+python scripts/generate_docs.py --check
 pytest -m 'not live'
 pytest -m live tests/test_live.py tests/test_live_usability.py
 python scripts/execute_notebooks.py
 ```
 
-La CI exécute Python 3.11, 3.12, 3.13 et 3.14, Ruff, mypy strict, tests déterministes, validation JSON Schema, wheel/sdist avec réinstallation, smoke tests Windows/macOS, smoke tests Gallica publics, attestations de preuve et notebooks de référence. Le workflow `Live evidence` relance les tests publics chaque semaine.
+La CI couvre Python 3.11 à 3.14, Ruff, mypy strict, documentation générée, couverture déterministe, wheel/sdist avec réinstallation, Windows/macOS, tests Gallica publics, attestations de preuve et notebooks.
 
 ## Documentation
 
 - [`docs/getting-started.md`](docs/getting-started.md) : démarrage rapide ;
-- [`docs/search.md`](docs/search.md) : SRU, pagination et JSONL ;
-- [`docs/documents.md`](docs/documents.md) : métadonnées, OCR, ALTO et IIIF ;
+- [`docs/search.md`](docs/search.md) : SRU, Categories, pagination et JSONL ;
+- [`docs/documents.md`](docs/documents.md) : métadonnées, Pagination, Toc, OCR, ALTO et IIIF ;
 - [`docs/periodicals.md`](docs/periodicals.md) : numéros datés ;
 - [`docs/corpus.md`](docs/corpus.md) : reprise, manifest et erreurs par artefact ;
-- [`docs/quotas.md`](docs/quotas.md) : comportement réseau et throttling ;
+- [`docs/quotas.md`](docs/quotas.md) : throttling et quotas ;
 - [`docs/errors.md`](docs/errors.md) : erreurs et limitations ;
 - [`docs/cli.md`](docs/cli.md) : CLI JSON-first ;
 - [`docs/architecture.md`](docs/architecture.md) : architecture et non-objectifs ;
-- [`docs/capabilities.md`](docs/capabilities.md) : matrice humaine des capacités ;
-- [`docs/agents.md`](docs/agents.md) : usage par agents ;
-- [`docs/evidence.md`](docs/evidence.md) : preuves, attestations et fraîcheur ;
+- [`docs/capabilities.md`](docs/capabilities.md) : matrice générée des capacités ;
+- [`docs/agents.md`](docs/agents.md) : consommation par agents ;
+- [`docs/evidence.md`](docs/evidence.md) : preuves et attestations ;
 - [`docs/release-readiness.md`](docs/release-readiness.md) : préparation de release ;
 - [`docs/releasing.md`](docs/releasing.md) : procédure de release ;
 - [`AGENTS.md`](AGENTS.md) : contraintes pour agents de développement.
 
-Le dépôt `maribakulj/maj-scripts-api.bnf.fr` sert de source d'apprentissage sur les wrappers historiques et leurs défauts. `gallica-sdk` n'en dépend pas et ne reprend pas leur architecture legacy.
+## Non-objectifs actuels
 
-## Pas encore dans la 0.2
+Le SDK n'expose pas encore :
 
-- accès PDF automatisé ;
+- PDF automatisé, faute de contrat public reproductible validé ;
 - sélection implicite de toutes les vues ;
 - export Parquet / DataFrame intégré ;
-- parallélisme / async ;
+- parallélisme ou API async ;
 - MCP.
+
+Ces absences sont intentionnelles : le projet préfère une petite surface vérifiée à une collection d'URLs enveloppées à moitié, activité humaine déjà suffisamment représentée sur GitHub.
