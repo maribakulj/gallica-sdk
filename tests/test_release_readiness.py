@@ -58,6 +58,18 @@ def test_python_classifiers_cover_tested_versions() -> None:
         assert f"Programming Language :: Python :: {python_version}" in classifiers
 
 
+def test_license_is_explicit_and_matches_release_policy() -> None:
+    project = _project_metadata()
+    assert project["license"] == "Apache-2.0"
+    license_files = project["license-files"]
+    assert isinstance(license_files, list)
+    assert "LICENSE" in license_files
+
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert "Apache License" in license_text
+    assert "Version 2.0, January 2004" in license_text
+
+
 def test_all_external_workflow_actions_are_pinned_to_full_sha() -> None:
     workflows = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
     assert workflows
@@ -94,6 +106,8 @@ def test_non_live_coverage_floor_is_enforced_in_ci() -> None:
 
 def test_release_blockers_are_explicit_not_implicit() -> None:
     checklist = (ROOT / "docs/release-readiness.md").read_text(encoding="utf-8")
-    assert "choose and add an explicit open-source license" in checklist
+    assert "choose and add an explicit open-source license" not in checklist
+    assert "Apache License 2.0" in checklist
     assert "remove the `.dev0` suffix" in checklist
     assert "TestPyPI" in checklist
+    assert "Trusted Publishing" in checklist

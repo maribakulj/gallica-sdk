@@ -6,6 +6,8 @@
 
 - [x] typed public Python API;
 - [x] audited 0.2 public API boundary with root exports, facade signatures and public model fields locked by deterministic tests;
+- [x] Apache License 2.0 declared in the repository and package metadata;
+- [x] wheel and sdist license-file / `License-Expression` validation in CI;
 - [x] unit and simulated integration tests;
 - [x] deterministic non-live branch coverage gate with an 85% floor;
 - [x] live smoke tests against public Gallica services;
@@ -36,7 +38,6 @@
 ## Blocking the first public release
 
 - [ ] apply the desired repository ruleset or equivalent branch protection to `main` and verify that GitHub enforces it;
-- [ ] choose and add an explicit open-source license;
 - [ ] choose the first public version/tag policy and remove the `.dev0` suffix for the release commit;
 - [ ] configure protected PyPI credentials or Trusted Publishing and add the final publish boundary;
 - [ ] validate the final release artifact through TestPyPI or an equivalent isolated publication path.
@@ -44,6 +45,8 @@
 The checked-in governance manifest is not itself protection. GitHub must report an active rule on `main`; otherwise a direct push can still bypass the CI gates. See [`repository-governance.md`](repository-governance.md) and issue #25.
 
 The audited Python boundary is documented in [`public-api.md`](public-api.md). The locking tests are intentional release guards: changing a public export, facade signature or public result-model field after 0.2.0 should require an explicit compatibility decision rather than occurring as a refactor side effect.
+
+The project license is Apache-2.0. `scripts/validate_release.py` checks source metadata and `scripts/validate_distributions.py` checks that both built distribution formats carry the SPDX license expression and the `LICENSE` file.
 
 ## Important non-blockers
 

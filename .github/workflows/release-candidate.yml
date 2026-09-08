@@ -28,6 +28,8 @@ jobs:
           fi
       - run: python -m build
       - run: twine check dist/*
+      - name: Validate distribution license metadata
+        run: python scripts/validate_distributions.py dist/*
       - name: Install wheel in isolated environment
         run: |
           python -m venv /tmp/gallica-wheel
