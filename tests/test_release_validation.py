@@ -12,11 +12,18 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 
-def test_development_metadata_is_valid_for_normal_ci() -> None:
+def test_release_candidate_metadata_is_valid() -> None:
+    assert module.validate() == "0.2.0rc1"
+    assert module.validate(require_release=True) == "0.2.0rc1"
+    assert module.validate(tag="v0.2.0rc1") == "0.2.0rc1"
+
+
+def test_development_version_is_rejected_for_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    project = dict(module.project_metadata())
+    project["version"] = "0.2.0.dev0"
+    monkeypatch.setattr(module, "project_metadata", lambda: project)
+
     assert module.validate() == "0.2.0.dev0"
-
-
-def test_development_version_is_rejected_for_release() -> None:
     with pytest.raises(ValueError, match="development version"):
         module.validate(require_release=True)
 
