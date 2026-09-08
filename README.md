@@ -228,6 +228,8 @@ python scripts/execute_notebooks.py
 
 ## Surface publique actuelle
 
+La frontière de compatibilité Python auditée pour la future série 0.2 est documentée dans [`docs/public-api.md`](docs/public-api.md). `gallica.__all__`, les champs des modèles de résultat et les signatures des principales méthodes publiques sont vérifiés en CI afin qu'une rupture accidentelle devienne un échec explicite.
+
 La partie mécanique de cette section est générée depuis `capabilities()`. Une nouvelle capacité canonique ajoutée au code sans régénération de la documentation fait échouer la CI.
 
 ### Capacités canoniques
@@ -306,6 +308,7 @@ La CI couvre Python 3.11 à 3.14, Ruff, mypy strict, documentation générée, c
 - [`docs/cli.md`](docs/cli.md) : CLI JSON-first ;
 - [`docs/architecture.md`](docs/architecture.md) : architecture et non-objectifs ;
 - [`docs/capabilities.md`](docs/capabilities.md) : matrice générée des capacités ;
+- [`docs/public-api.md`](docs/public-api.md) : frontière publique auditée et politique de compatibilité ;
 - [`docs/agents.md`](docs/agents.md) : consommation par agents ;
 - [`docs/evidence.md`](docs/evidence.md) : preuves et attestations ;
 - [`docs/release-readiness.md`](docs/release-readiness.md) : préparation de release ;
