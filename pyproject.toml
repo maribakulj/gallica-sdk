@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gallica-sdk"
-version = "0.2.0.dev0"
+version = "0.2.0rc1"
 description = "Verified programmable reference and typed Python SDK for public Gallica services"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,7 +12,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 keywords = ["gallica", "bnf", "digital-humanities", "iiif", "ocr"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: Apache Software License",

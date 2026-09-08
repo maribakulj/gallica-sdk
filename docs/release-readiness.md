@@ -1,6 +1,6 @@
 # First release readiness
 
-`gallica-sdk` has not published a stable GitHub or PyPI release yet. The current package version is a development version.
+`gallica-sdk` is now at `0.2.0rc1`, the first public release candidate. No stable GitHub or PyPI release has been published yet.
 
 ## Already in place
 
@@ -8,6 +8,8 @@
 - [x] audited 0.2 public API boundary with root exports, facade signatures and public model fields locked by deterministic tests;
 - [x] Apache License 2.0 declared in the repository and package metadata;
 - [x] wheel and sdist license-file / `License-Expression` validation in CI;
+- [x] first release-candidate version selected and `.dev0` removed;
+- [x] guarded TestPyPI Trusted Publishing job implemented separately from build machinery;
 - [x] unit and simulated integration tests;
 - [x] deterministic non-live branch coverage gate with an 85% floor;
 - [x] live smoke tests against public Gallica services;
@@ -25,28 +27,42 @@
 - [x] machine-readable capability contracts;
 - [x] resolved operational contracts for agents;
 - [x] programmable reference and executable JSON Schema validation;
-- [x] validation evidence graph with historical provenance plus current CI attestations;
-- [x] minimal JSON-first CLI tested from wheel and sdist;
+- [x] validation evidence graph with current CI attestations;
+- [x] JSON-first CLI tested from wheel and sdist;
 - [x] project changelog;
 - [x] package metadata URLs and classifiers;
 - [x] user-facing guides for search, documents, periodicals, corpus, quotas, errors and CLI;
 - [x] executable reference notebooks validated in CI;
 - [x] release metadata/tag validator;
-- [x] non-publishing release-candidate workflow retaining validated artifacts;
+- [x] release-candidate workflow retaining the exact validated wheel/sdist artifacts;
 - [x] desired `main` repository ruleset versioned and tested in `repository-policy/main-ruleset.json`.
 
-## Blocking the first public release
+## Blocking the first stable public release
 
 - [ ] apply the desired repository ruleset or equivalent branch protection to `main` and verify that GitHub enforces it;
-- [ ] choose the first public version/tag policy and remove the `.dev0` suffix for the release commit;
-- [ ] configure protected PyPI credentials or Trusted Publishing and add the final publish boundary;
-- [ ] validate the final release artifact through TestPyPI or an equivalent isolated publication path.
+- [ ] configure the `testpypi` GitHub environment and matching TestPyPI Trusted Publisher for `.github/workflows/release-candidate.yml`;
+- [ ] set the repository variable `TESTPYPI_PUBLISH_ENABLED=true` only after that Trusted Publisher is configured;
+- [ ] run the release-candidate workflow from `main` with `publish_testpypi=true` and verify installation of `gallica-sdk==0.2.0rc1` from TestPyPI;
+- [ ] promote the validated candidate to final version `0.2.0` and create the matching `v0.2.0` tag;
+- [ ] configure the protected production PyPI Trusted Publisher and final publish boundary.
 
-The checked-in governance manifest is not itself protection. GitHub must report an active rule on `main`; otherwise a direct push can still bypass the CI gates. See [`repository-governance.md`](repository-governance.md) and issue #25.
+The checked-in governance manifest is not itself protection. GitHub currently reports `main` as unprotected and reports no active repository ruleset. See [`repository-governance.md`](repository-governance.md) and issue #25.
 
 The audited Python boundary is documented in [`public-api.md`](public-api.md). The locking tests are intentional release guards: changing a public export, facade signature or public result-model field after 0.2.0 should require an explicit compatibility decision rather than occurring as a refactor side effect.
 
 The project license is Apache-2.0. `scripts/validate_release.py` checks source metadata and `scripts/validate_distributions.py` checks that both built distribution formats carry the SPDX license expression and the `LICENSE` file.
+
+## TestPyPI publication boundary
+
+The release-candidate workflow builds and validates distributions in a job with read-only repository permissions. A separate `publish-testpypi` job may receive `id-token: write`, but only when all of the following are true:
+
+- the workflow was started manually;
+- `publish_testpypi=true` was explicitly selected;
+- the workflow runs from `main`;
+- the repository variable `TESTPYPI_PUBLISH_ENABLED` is exactly `true`;
+- the `testpypi` environment and matching TestPyPI Trusted Publisher have been configured externally.
+
+The publishing job does not check out the repository or run build scripts. It downloads the exact `gallica-sdk-dist` artifact produced by the validated build job and publishes those bytes to TestPyPI.
 
 ## Important non-blockers
 
