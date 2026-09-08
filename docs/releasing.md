@@ -4,9 +4,11 @@ The repository separates release validation from publication. Building a valid a
 
 The project is distributed under the Apache License 2.0. Source metadata and built distribution artifacts must agree on that license before any candidate can be treated as releasable.
 
-## Development validation
+## Current candidate
 
-Normal CI validates the current development version with:
+The current package version is `0.2.0rc1`. This is the first release candidate for the intended `0.2.0` stable release.
+
+Normal CI validates the candidate with:
 
 ```bash
 python scripts/validate_release.py
@@ -17,39 +19,68 @@ python scripts/validate_distributions.py dist/*
 
 `validate_release.py` checks the repository-level SPDX declaration and `LICENSE` file. `validate_distributions.py` then inspects the built wheel and sdist, requiring `License-Expression: Apache-2.0`, `License-File: LICENSE`, and the Apache-2.0 license text inside both archive formats.
 
-CI then installs both the wheel and the source distribution into separate virtual environments and runs `pip check` plus import/version smoke checks.
+CI installs both the wheel and the source distribution into separate virtual environments and runs `pip check` plus import/version smoke checks.
 
 ## Release candidate workflow
 
-`.github/workflows/release-candidate.yml` is intentionally non-publishing. It can be run manually while the project still carries a development version. On a Git tag it additionally requires the tag and project version to match exactly.
+`.github/workflows/release-candidate.yml` builds and validates non-development versions. A manual run now executes `validate_release.py --require-release`; a Git tag additionally requires the tag and project version to match exactly.
 
 Examples:
 
 ```text
-project.version = 0.2.0
-v0.2.0              -> accepted
-0.2.0               -> accepted by the validator when supplied explicitly
-v0.2.1              -> rejected
-0.2.0.dev0 + v0.2.0 -> rejected
+project.version = 0.2.0rc1
+manual candidate run  -> accepted
+v0.2.0rc1             -> accepted
+v0.2.0                -> rejected while project.version is 0.2.0rc1
+0.2.0.dev0            -> rejected by --require-release
 ```
 
-Successful runs retain the wheel and sdist as a GitHub Actions artifact. The same artifact bytes should be the ones later exercised through TestPyPI and ultimately published; rebuilding after validation would defeat the point of validating a candidate.
+The build job retains the wheel and sdist as the `gallica-sdk-dist` Actions artifact. Publication jobs must consume that artifact rather than rebuild different bytes.
 
-## Before the first public release
+## TestPyPI Trusted Publishing
 
-The release commit must satisfy all of the following:
+The workflow contains an optional `publish-testpypi` job. It is intentionally separated from the build job and receives `id-token: write` only in that publishing job.
+
+Before enabling it, configure all of the following outside the repository source tree:
+
+1. create a GitHub environment named `testpypi`;
+2. configure a TestPyPI Trusted Publisher for repository `maribakulj/gallica-sdk`;
+3. set its workflow filename to `release-candidate.yml` and environment to `testpypi`;
+4. set repository variable `TESTPYPI_PUBLISH_ENABLED=true` only after the publisher is configured.
+
+Then run **Release candidate** manually from `main` with `publish_testpypi=true`.
+
+The publish job has four code-level gates in addition to the external Trusted Publisher configuration: it must be a manual workflow run, `publish_testpypi` must be true, the ref must be `main`, and `TESTPYPI_PUBLISH_ENABLED` must equal `true`.
+
+The publishing job performs no checkout and no build. It downloads `gallica-sdk-dist` from the preceding job and sends those exact artifacts to TestPyPI using the PyPA publish action pinned to a full commit SHA.
+
+After a successful upload, validate from a clean environment against TestPyPI. Because runtime dependency `httpx` is not expected to be mirrored there, allow dependencies to come from normal PyPI while selecting the candidate from TestPyPI, for example:
+
+```bash
+python -m venv /tmp/gallica-testpypi
+/tmp/gallica-testpypi/bin/python -m pip install \
+  --index-url https://pypi.org/simple \
+  --extra-index-url https://test.pypi.org/simple \
+  'gallica-sdk==0.2.0rc1'
+/tmp/gallica-testpypi/bin/gallica capabilities
+```
+
+The candidate must report `0.2.0rc1`, expose the expected CLI and import cleanly before promotion to the stable version.
+
+## Before the first stable public release
+
+The final release commit must satisfy all of the following:
 
 1. Apache-2.0 repository and package metadata agree and both distribution formats contain the license;
-2. `project.version` is a non-development version;
-3. the intended tag matches that version;
-4. normal CI is green, including live Gallica tests and executable notebooks;
-5. the release-candidate workflow validates wheel and sdist;
-6. the final artifact is tested through TestPyPI or another isolated publication path;
-7. PyPI publication uses protected credentials or Trusted Publishing;
-8. `main` is protected by an enforced repository ruleset or equivalent branch protection.
+2. `main` is protected by an enforced repository ruleset or equivalent branch protection;
+3. `0.2.0rc1` has been published and installed successfully through TestPyPI;
+4. candidate feedback requires no incompatible public API change, or any such change is reflected in a new candidate;
+5. `project.version` is promoted to `0.2.0`;
+6. the intended tag is exactly `v0.2.0`;
+7. normal CI is green, including live Gallica tests and executable notebooks;
+8. the release workflow validates wheel and sdist;
+9. production PyPI publication uses a protected Trusted Publisher and consumes validated artifacts rather than rebuilding them.
 
-## Publication boundary
+## Production publication boundary
 
-This repository currently contains no automatic PyPI upload step. That omission is deliberate until the first public version, TestPyPI validation and publishing trust configuration have been completed.
-
-When publication is added, the publish job should consume artifacts produced by a preceding validation job rather than rebuilding different bytes after validation.
+Production PyPI publishing remains intentionally absent. Preparing TestPyPI does not silently enable production publishing, because conflating the rehearsal stage and the irreversible public release would be a particularly efficient way to make packaging exciting for all the wrong reasons.
