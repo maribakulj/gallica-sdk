@@ -132,7 +132,8 @@ def _validate_text(response: httpx.Response) -> str:
 
 def _looks_like_tei(content: bytes) -> bool:
     prefix = content.lstrip()[:4096]
-    return re.search(br"<(?:[A-Za-z0-9_.-]+:)?TEI(?:\.2)?(?:\s|>)", prefix, re.IGNORECASE) is not None
+    pattern = br"<(?:[A-Za-z0-9_.-]+:)?TEI(?:\.2)?(?:\s|>)"
+    return re.search(pattern, prefix, re.IGNORECASE) is not None
 
 
 def _validate_toc(response: httpx.Response) -> TocDocument:
@@ -208,8 +209,14 @@ def _validate_iiif_manifest(response: httpx.Response) -> IIIFPresentationManifes
     contexts = _iiif_contexts(manifest.get("@context"))
     context_version = _iiif_version_from_context(contexts)
     structure_version = _iiif_version_from_structure(manifest)
-    if context_version is not None and structure_version is not None and context_version != structure_version:
-        raise GallicaResponseError("IIIF Presentation manifest context conflicts with its structure")
+    if (
+        context_version is not None
+        and structure_version is not None
+        and context_version != structure_version
+    ):
+        raise GallicaResponseError(
+            "IIIF Presentation manifest context conflicts with its structure"
+        )
     version: Literal["2", "3", "unknown"]
     if context_version is not None:
         version = context_version
@@ -231,7 +238,9 @@ def _validate_iiif_manifest(response: httpx.Response) -> IIIFPresentationManifes
         canvas_count = 0
         for index, sequence in enumerate(sequences):
             if not isinstance(sequence, dict):
-                raise GallicaResponseError(f"IIIF Presentation v2 sequence {index} is not an object")
+                raise GallicaResponseError(
+                    f"IIIF Presentation v2 sequence {index} is not an object"
+                )
             canvases = sequence.get("canvases")
             if not isinstance(canvases, list):
                 raise GallicaResponseError(f"IIIF Presentation v2 sequence {index} lacks canvases")
@@ -250,7 +259,9 @@ def _validate_iiif_manifest(response: httpx.Response) -> IIIFPresentationManifes
         if raw_identifier is not None and not isinstance(raw_identifier, str):
             raise GallicaResponseError("IIIF Presentation manifest has an invalid identifier")
         if not contexts and raw_identifier is None:
-            raise GallicaResponseError("JSON payload is not recognizable as an IIIF Presentation manifest")
+            raise GallicaResponseError(
+                "JSON payload is not recognizable as an IIIF Presentation manifest"
+            )
         identifier = raw_identifier
         canvas_count = None
 
@@ -422,6 +433,7 @@ class Gallica:
         response = self._transport.get(
             f"{BASE_URL}/RequestDigitalElement",
             params={"O": normalize_ark(ark), "E": "ALTO", "Deb": str(view)},
+            bucket="alto",
         )
         return _validate_alto(response)
 
@@ -476,9 +488,9 @@ class Gallica:
             return "iiif_hd"
         token = size.split(",", 1)[0].lstrip("!^")
         try:
-            return "iiif_hd" if int(token) > 1000 else "default"
+            return "iiif_hd" if int(token) > 1000 else "iiif"
         except ValueError:
-            return "default"
+            return "iiif"
 
     def _image(
         self,

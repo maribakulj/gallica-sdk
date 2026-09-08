@@ -65,8 +65,11 @@ def test_categories_exposes_typed_values_and_cql_mapping() -> None:
 
 
 def test_categories_preserves_unknown_categories_without_inventing_cql_mapping() -> None:
-    response = _response(b'[{"howMany":1,"value":"future_facet","cleanValue":"x","libelleValue":"X"}]')
-    categories = Gallica(transport=StaticTransport(response)).categories("gallica all x")  # type: ignore[arg-type]
+    response = _response(
+        b'[{"howMany":1,"value":"future_facet","cleanValue":"x","libelleValue":"X"}]'
+    )
+    gallica = Gallica(transport=StaticTransport(response))  # type: ignore[arg-type]
+    categories = gallica.categories("gallica all x")
     item = categories.values[0]
     assert item.category == "future_facet"
     assert item.cql_field is None

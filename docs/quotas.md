@@ -6,11 +6,17 @@ Les services publics Gallica n'ont pas tous les mêmes contraintes. `gallica-sdk
 
 | Bucket SDK | Usage | Intervalle conservateur |
 |---|---|---:|
-| `default` | SRU, OAIRecord, Pagination, Issues, ContentSearch, ALTO, IIIF standard | 0 s ajouté par le SDK |
+| `default` | SRU, Categories, OAIRecord, Pagination, Toc, Issues, ContentSearch, IIIF `info.json` | 0 s ajouté par le SDK |
+| `alto` | ALTO via `RequestDigitalElement` | 1 s |
+| `iiif` | image IIIF jusqu'à 1000 px | 1 s |
 | `text` | `.texteBrut` | 12,5 s |
 | `iiif_hd` | image IIIF au-dessus de 1000 px | 12,5 s |
 
 Le bucket `text` reste sous le quota public documenté de 5 requêtes par minute. Le bucket haute définition est volontairement conservateur.
+
+Les buckets `alto` et `iiif` méritent une précision : **la BnF ne publie aucun quota pour ces deux services**. L'intervalle de 1 s n'est donc pas la transcription d'une limite amont, c'est un garde-fou choisi par le SDK. Il existe parce que `Corpus.fetch(alto=True, images=True, views=[...])` est la seule primitive du projet capable de générer des centaines de requêtes d'affilée : sans plancher, un corpus de 20 ARK sur 50 vues enverrait ~2000 requêtes en rafale sur un service public. 60 requêtes/minute reste largement exploitable pour un usage normal tout en supprimant la rafale.
+
+Les services de métadonnées (`default`) restent sans intervalle : ils sont légers, et un usage interactif normal n'en émet que quelques-uns.
 
 ## Retries
 

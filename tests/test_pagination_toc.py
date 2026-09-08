@@ -31,7 +31,18 @@ def _response(content: bytes, *, content_type: str = "application/xml") -> httpx
 
 
 def test_pagination_exposes_structure_and_logical_pages() -> None:
-    xml = b"""<livre><structure><firstDisplayedPage>12</firstDisplayedPage><hasToc>true</hasToc><TocLocation>328</TocLocation><hasContent>true</hasContent><idUPN>NUMM-5738219</idUPN><nbVueImages>2</nbVueImages></structure><pages><page><numero>NP</numero><ordre>1</ordre><pagination_type>N</pagination_type></page><page><numero>I</numero><ordre>2</ordre><pagination_type>R</pagination_type><legend>Frontispice</legend></page></pages></livre>"""
+    xml = (
+        b"<livre><structure>"
+        b"<firstDisplayedPage>12</firstDisplayedPage><hasToc>true</hasToc>"
+        b"<TocLocation>328</TocLocation><hasContent>true</hasContent>"
+        b"<idUPN>NUMM-5738219</idUPN><nbVueImages>2</nbVueImages>"
+        b"</structure><pages>"
+        b"<page><numero>NP</numero><ordre>1</ordre>"
+        b"<pagination_type>N</pagination_type></page>"
+        b"<page><numero>I</numero><ordre>2</ordre>"
+        b"<pagination_type>R</pagination_type><legend>Frontispice</legend></page>"
+        b"</pages></livre>"
+    )
     gallica = Gallica(transport=StaticTransport({"/services/Pagination": _response(xml)}))  # type: ignore[arg-type]
     pagination = gallica.document("bpt6k1").pagination()
 
@@ -49,14 +60,20 @@ def test_pagination_exposes_structure_and_logical_pages() -> None:
 
 
 def test_pagination_rejects_invalid_page_order() -> None:
-    xml = b"<livre><structure><nbVueImages>1</nbVueImages></structure><pages><page><ordre>zero</ordre></page></pages></livre>"
+    xml = (
+        b"<livre><structure><nbVueImages>1</nbVueImages></structure>"
+        b"<pages><page><ordre>zero</ordre></page></pages></livre>"
+    )
     gallica = Gallica(transport=StaticTransport({"/services/Pagination": _response(xml)}))  # type: ignore[arg-type]
     with pytest.raises(GallicaResponseError, match="ordre"):
         gallica.document("bpt6k1").pagination()
 
 
 def test_toc_accepts_legacy_html() -> None:
-    response = _response(b"<!DOCTYPE html><html><body>table</body></html>", content_type="text/html")
+    response = _response(
+        b"<!DOCTYPE html><html><body>table</body></html>",
+        content_type="text/html",
+    )
     gallica = Gallica(transport=StaticTransport({"/services/Toc": response}))  # type: ignore[arg-type]
     toc = gallica.document("bpt6k1").toc()
     assert toc.format == "html"

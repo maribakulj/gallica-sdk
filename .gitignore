@@ -1,0 +1,22 @@
+# Python bytecode and build artifacts
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# Tool caches and reports
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# CI-generated validation evidence (never committed: see docs/evidence.md)
+evidence-attestation.json
+live-evidence-results.jsonl

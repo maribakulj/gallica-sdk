@@ -64,7 +64,9 @@ def test_public_gallica_phase1_document_access() -> None:
         except GallicaResponseError as exc:
             assert "anti-bot challenge" in str(exc)
             text_outcome = "environment-limited"
-            text_detail = "texteBrut returned the detected Gallica anti-bot challenge from this runner"
+            text_detail = (
+                "texteBrut returned the detected Gallica anti-bot challenge from this runner"
+            )
         else:
             assert len(text) > 100
             assert len(text_doc.page(1).text()) > 10

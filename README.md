@@ -149,7 +149,7 @@ Le package installe une CLI volontairement mince et JSON-first :
 ```bash
 gallica capabilities
 gallica contract page_alto
-gallica search 'gallica all "Verdun"' --maximum-records 5
+gallica search 'gallica all "Verdun"' --limit 5
 gallica metadata bpt6k5738219s
 gallica page-count bpt6k5738219s
 ```
@@ -190,13 +190,18 @@ Les déclarations de preuve checked-in ne contiennent plus de timestamp ou de ru
 
 Après succès de la suite complète, la CI génère `evidence-attestation.json`, lié au commit et au run exacts. Les attestations 2.0 séparent `test_outcome` et `service_outcome` ; les anciennes attestations 1.0 restent lisibles sans être promues artificiellement en preuve d'opérabilité.
 
+**L'attestation est un artefact de CI, jamais un fichier du dépôt** : elle est liée à un commit précis, donc la commiter reviendrait à décrire un autre commit que celui qu'on lit. Elle n'est ni dans le dépôt, ni dans le wheel. Il faut la télécharger depuis l'artefact `gallica-evidence-attestation-<sha>` d'un run Actions récent (rétention 30 jours) :
+
 ```python
 from gallica import load_evidence_attestation, operational_contract
 
+# evidence-attestation.json : téléchargé depuis un run GitHub Actions, pas fourni par le package.
 attestation = load_evidence_attestation("evidence-attestation.json")
 contract = operational_contract("page_alto", attestation=attestation)
 print(contract["freshness"])
 ```
+
+Sans attestation fournie explicitement, `evidence_freshness()` renvoie `unknown` pour toutes les preuves live — c'est le comportement voulu. Le SDK ne peut pas affirmer à l'import qu'un service externe fonctionnait ; il expose de quoi raisonner sur une validation qu'on lui donne.
 
 Documentation agent : [`docs/agents.md`](docs/agents.md). Modèle de preuve : [`docs/evidence.md`](docs/evidence.md).
 

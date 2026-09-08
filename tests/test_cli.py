@@ -1,12 +1,30 @@
 from __future__ import annotations
 
 import json
+import re
+import shlex
+from pathlib import Path
 from typing import Self
 
 import pytest
 
 from gallica import cli
 from gallica.models import DocumentMetadata, DublinCoreRecord, SearchResults
+
+ROOT = Path(__file__).resolve().parents[1]
+DOCUMENTED_CLI_SOURCES = ("README.md", "docs/cli.md")
+_BASH_BLOCK = re.compile(r"```bash\n(.*?)```", re.DOTALL)
+
+
+def _documented_invocations(relative_path: str) -> list[str]:
+    text = (ROOT / relative_path).read_text(encoding="utf-8")
+    commands: list[str] = []
+    for block in _BASH_BLOCK.findall(text):
+        for raw_line in block.splitlines():
+            line = raw_line.strip()
+            if line.startswith("gallica ") and "--help" not in line:
+                commands.append(line)
+    return commands
 
 
 def test_capabilities_command_emits_json(capsys: pytest.CaptureFixture[str]) -> None:
@@ -35,7 +53,10 @@ def test_search_limit_is_bounded() -> None:
     assert exc.value.code == 2
 
 
-def test_network_commands_delegate_to_sdk(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_network_commands_delegate_to_sdk(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     record = DublinCoreRecord(
         fields={
             "title": ("Example",),
@@ -88,3 +109,23 @@ def test_network_commands_delegate_to_sdk(monkeypatch: pytest.MonkeyPatch, capsy
     assert cli.main(["page-count", "bpt6ktest"]) == 0
     page_payload = json.loads(capsys.readouterr().out)
     assert page_payload == {"ark": "bpt6ktest", "page_count": 12}
+
+
+def test_every_documented_cli_invocation_parses() -> None:
+    """Documentation must not advertise flags or commands the parser rejects.
+
+    The generated capability blocks do not cover prose CLI examples, so this is
+    what keeps README/docs usage honest against build_parser().
+    """
+    checked = 0
+    for relative_path in DOCUMENTED_CLI_SOURCES:
+        for command in _documented_invocations(relative_path):
+            argv = shlex.split(command)[1:]
+            try:
+                cli.build_parser().parse_args(argv)
+            except SystemExit as exc:  # pragma: no cover - only on documentation drift
+                raise AssertionError(
+                    f"{relative_path} documents an invocation the CLI rejects: {command}"
+                ) from exc
+            checked += 1
+    assert checked >= len(DOCUMENTED_CLI_SOURCES)

@@ -59,6 +59,31 @@ The normal CI live job emits the artifact for validated PR/push runs. A dedicate
 
 Schema-1.0 attestations remain loadable for compatibility. Because they only stored a generic `outcome`, their service outcome is normalized to `unknown` and they are not promoted to current operational evidence.
 
+## Obtaining an attestation
+
+**An attestation is a CI artifact, not a repository file.** `evidence-attestation.json`
+is never committed: it is bound to one exact commit and one exact Actions run, so a
+copy checked into the tree would immediately describe a different commit than the one
+being read.
+
+It is therefore not shipped in the wheel or the sdist, and a fresh clone contains no
+attestation at all. To obtain one:
+
+1. open the most recent successful `Live evidence` run (or the `live` job of a CI run)
+   in GitHub Actions;
+2. download the `gallica-evidence-attestation-<sha>` artifact;
+3. pass the extracted `evidence-attestation.json` to `load_evidence_attestation()`.
+
+Artifacts are retained for 30 days. Past that window the observations are gone and the
+Sunday `Live evidence` run is what produces a current one.
+
+The practical consequence is deliberate and worth stating directly: **for anyone who has
+not downloaded an artifact, `evidence_freshness()` reports `unknown` for every live
+evidence ID, and it is supposed to.** The freshness machinery is a tool for reasoning
+about a validation run you hold, not a claim the package makes about itself. An SDK that
+asserted "this service worked" from a value baked into its own source would be asserting
+something it cannot know at import time.
+
 ## Freshness
 
 Without an explicit current attestation, live freshness is intentionally `unknown`:

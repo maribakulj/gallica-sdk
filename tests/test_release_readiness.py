@@ -94,6 +94,17 @@ def test_non_live_coverage_floor_is_enforced_in_ci() -> None:
 
 def test_release_blockers_are_explicit_not_implicit() -> None:
     checklist = (ROOT / "docs/release-readiness.md").read_text(encoding="utf-8")
-    assert "choose and add an explicit open-source license" in checklist
     assert "remove the `.dev0` suffix" in checklist
     assert "TestPyPI" in checklist
+    assert "choose and add an explicit open-source license" not in checklist
+
+
+def test_distribution_declares_a_license_backed_by_a_license_file() -> None:
+    """A missing license makes the package legally unusable, so pin both halves."""
+    project = _project_metadata()
+    assert project["license"] == "MIT"
+    assert project["license-files"] == ["LICENSE"]
+
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert "MIT License" in license_text
+    assert "WITHOUT WARRANTY OF ANY KIND" in license_text

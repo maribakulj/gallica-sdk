@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import httpx
+import pytest
 
 from gallica import Gallica
 from gallica.ark import ark_uri, normalize_ark
@@ -20,18 +21,51 @@ class FakeTransport:
         self.calls.append((url, normalized, bucket))
         request = httpx.Request("GET", url, params=params)
         if url.endswith("/services/Pagination"):
-            return httpx.Response(200, content=b"<livre><structure><nbVueImages>374</nbVueImages></structure></livre>", request=request)
+            return httpx.Response(
+                200,
+                content=b"<livre><structure><nbVueImages>374</nbVueImages></structure></livre>",
+                request=request,
+            )
         if url.endswith("/services/OAIRecord"):
-            xml = b'''<results xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"><notice><record><metadata><oai_dc:dc><dc:title>Example title</dc:title><dc:identifier>https://gallica.bnf.fr/ark:/12148/bpt6k5738219s</dc:identifier></oai_dc:dc></metadata></record></notice><mode_indexation>OCR</mode_indexation><nqamoyen>92.57</nqamoyen></results>'''
+            xml = (
+                b'<results xmlns:dc="http://purl.org/dc/elements/1.1/"'
+                b' xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/">'
+                b"<notice><record><metadata><oai_dc:dc>"
+                b"<dc:title>Example title</dc:title>"
+                b"<dc:identifier>https://gallica.bnf.fr/ark:/12148/bpt6k5738219s</dc:identifier>"
+                b"</oai_dc:dc></metadata></record></notice>"
+                b"<mode_indexation>OCR</mode_indexation>"
+                b"<nqamoyen>92.57</nqamoyen></results>"
+            )
             return httpx.Response(200, content=xml, request=request)
         if url.endswith("/RequestDigitalElement"):
             return httpx.Response(200, content=b"<alto/>", request=request)
         if url.endswith("/info.json"):
-            return httpx.Response(200, content=json.dumps({"width": 10784, "height": 7200}).encode(), headers={"Content-Type": "application/json"}, request=request)
+            return httpx.Response(
+                200,
+                content=json.dumps({"width": 10784, "height": 7200}).encode(),
+                headers={"Content-Type": "application/json"},
+                request=request,
+            )
         if "/iiif/" in url:
-            return httpx.Response(200, content=b"\xff\xd8\xffjpeg", headers={"Content-Type": "image/jpeg"}, request=request)
+            return httpx.Response(
+                200,
+                content=b"\xff\xd8\xffjpeg",
+                headers={"Content-Type": "image/jpeg"},
+                request=request,
+            )
         if url.endswith("/SRU"):
-            xml = b'''<srw:searchRetrieveResponse xmlns:srw="http://www.loc.gov/zing/srw/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"><srw:numberOfRecords>12</srw:numberOfRecords><srw:records><srw:record><srw:recordData><oai_dc:dc><dc:title>Verdun</dc:title><dc:creator>Auteur</dc:creator><dc:identifier>https://gallica.bnf.fr/ark:/12148/bpt6k123</dc:identifier></oai_dc:dc></srw:recordData></srw:record></srw:records></srw:searchRetrieveResponse>'''
+            xml = (
+                b'<srw:searchRetrieveResponse xmlns:srw="http://www.loc.gov/zing/srw/"'
+                b' xmlns:dc="http://purl.org/dc/elements/1.1/"'
+                b' xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/">'
+                b"<srw:numberOfRecords>12</srw:numberOfRecords>"
+                b"<srw:records><srw:record><srw:recordData><oai_dc:dc>"
+                b"<dc:title>Verdun</dc:title><dc:creator>Auteur</dc:creator>"
+                b"<dc:identifier>https://gallica.bnf.fr/ark:/12148/bpt6k123</dc:identifier>"
+                b"</oai_dc:dc></srw:recordData></srw:record></srw:records>"
+                b"</srw:searchRetrieveResponse>"
+            )
             return httpx.Response(200, content=xml, request=request)
         raise AssertionError(f"Unexpected URL: {url}")
 
@@ -41,7 +75,24 @@ def test_ark_normalization_accepts_common_forms() -> None:
     assert normalize_ark(expected) == expected
     assert normalize_ark(f"ark:/12148/{expected}") == expected
     assert normalize_ark(f"https://gallica.bnf.fr/ark:/12148/{expected}") == expected
+    assert normalize_ark(f"https://gallica.bnf.fr/ark:/12148/{expected}/f3.image") == expected
     assert ark_uri(expected) == f"ark:/12148/{expected}"
+
+
+def test_ark_normalization_rejects_gallica_urls_without_an_ark_marker() -> None:
+    """A Gallica URL with no ark:/12148/ marker must fail loudly.
+
+    Reducing it to its first path segment used to yield identifiers such as
+    'services' or 'blog', which only surfaced later as a confusing 404.
+    """
+    for value in (
+        "https://gallica.bnf.fr/services/OAIRecord?ark=bpt6k5738219s",
+        "https://gallica.bnf.fr/blog/xyz",
+        "https://gallica.bnf.fr/",
+        "https://evil.example/ark:/12148/bpt6k5738219s",
+    ):
+        with pytest.raises(ValueError, match="Invalid Gallica ARK"):
+            normalize_ark(value)
 
 
 def test_document_and_page_vertical_slice() -> None:
@@ -58,12 +109,18 @@ def test_document_and_page_vertical_slice() -> None:
 
     page = doc.page(3)
     assert page.alto() == b"<alto/>"
+    alto_call = next(call for call in transport.calls if "RequestDigitalElement" in call[0])
+    assert alto_call[2] == "alto"
     assert page.iiif_info()["width"] == 10784
     assert page.image() == b"\xff\xd8\xffjpeg"
 
-    image_call = next(call for call in transport.calls if "/iiif/" in call[0] and not call[0].endswith("info.json"))
+    image_call = next(
+        call
+        for call in transport.calls
+        if "/iiif/" in call[0] and not call[0].endswith("info.json")
+    )
     assert "/full/1000,/0/native.jpg" in image_call[0]
-    assert image_call[2] == "default"
+    assert image_call[2] == "iiif"
 
 
 def test_search_returns_typed_repeated_dublin_core_records() -> None:

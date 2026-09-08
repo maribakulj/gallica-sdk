@@ -337,6 +337,15 @@ def evidence_freshness(
     attestation: EvidenceAttestation | None = None,
     as_of: date | None = None,
 ) -> tuple[EvidenceFreshness, ...]:
+    """Classify each declared evidence item against an attestation.
+
+    Attestations are CI artifacts bound to one commit and one Actions run; they
+    are deliberately never committed or shipped with the package. Callers who
+    pass no ``attestation`` therefore get ``state="unknown"`` for every live
+    evidence ID, which is the honest answer: the package cannot know at import
+    time whether an external service responded. See ``docs/evidence.md`` for how
+    to download one.
+    """
     today = as_of or datetime.now(UTC).date()
     attested = {
         record["evidence_id"]: record

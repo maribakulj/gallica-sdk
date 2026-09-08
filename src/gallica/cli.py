@@ -35,7 +35,10 @@ def _metadata_payload(metadata: Any) -> dict[str, object]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="gallica", description="Typed access to public Gallica services.")
+    parser = argparse.ArgumentParser(
+        prog="gallica",
+        description="Typed access to public Gallica services.",
+    )
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -53,7 +56,10 @@ def build_parser() -> argparse.ArgumentParser:
     metadata = subparsers.add_parser("metadata", help="Fetch typed metadata for one ARK.")
     metadata.add_argument("ark")
 
-    page_count = subparsers.add_parser("page-count", help="Fetch the number of image views for one ARK.")
+    page_count = subparsers.add_parser(
+        "page-count",
+        help="Fetch the number of image views for one ARK.",
+    )
     page_count.add_argument("ark")
 
     return parser

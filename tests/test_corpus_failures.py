@@ -117,7 +117,9 @@ def test_resume_reuses_successes_and_retries_only_failed_artifacts(tmp_path: Pat
     assert {record.kind for record in second.successes[0].artifacts} == {"metadata", "text"}
 
 
-def test_http_status_failure_classifies_only_transient_statuses_as_retryable(tmp_path: Path) -> None:
+def test_http_status_failure_classifies_only_transient_statuses_as_retryable(
+    tmp_path: Path,
+) -> None:
     class StatusDocument:
         def __init__(self, status: int) -> None:
             self.status = status

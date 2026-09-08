@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from gallica import capabilities
+from gallica import capabilities, programmable_reference
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -55,11 +55,49 @@ def test_every_canonical_capability_is_visible_in_human_docs() -> None:
         assert spec["call"] in matrix, spec["id"]
 
 
-def test_readme_does_not_claim_existing_cli_is_missing() -> None:
+def test_human_docs_do_not_claim_the_existing_cli_is_missing() -> None:
+    """The CLI ships; no human doc may still describe it as absent or conditional.
+
+    The generated capability blocks cannot catch this: prose about what the
+    project deliberately does *not* do is hand-written everywhere.
+    """
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "docs/cli.md" in readme
-    missing_section = readme.partition("## Non-objectifs actuels")[2]
-    assert "- CLI" not in missing_section
+    assert "- CLI" not in readme.partition("## Non-objectifs actuels")[2]
+
+    architecture = (ROOT / "docs/architecture.md").read_text(encoding="utf-8")
+    assert "cli.md" in architecture
+    non_goals = architecture.partition("## Non-objectifs actuels")[2]
+    assert "- CLI" not in non_goals
+    assert "Une CLI, une API async" not in architecture
+
+
+def test_architecture_functional_surface_lists_every_network_service() -> None:
+    """docs/architecture.md prose must not lag behind the canonical service catalog."""
+    architecture = (ROOT / "docs/architecture.md").read_text(encoding="utf-8")
+    surface = architecture.partition("## Surface fonctionnelle actuelle")[2]
+    surface = surface.partition("## ")[0]
+    expected_markers = {
+        "sru": "SRU",
+        "categories": "Categories",
+        "oai-record": "OAIRecord",
+        "pagination": "Pagination",
+        "toc": "Toc",
+        "issues": "Issues",
+        "content-search": "ContentSearch",
+        "text": "OCR",
+        "alto": "ALTO",
+        "iiif-image": "IIIF Image",
+        "iiif-presentation": "IIIF Presentation",
+    }
+    supported = {
+        service["id"]
+        for service in programmable_reference()["services"]
+        if service["status"] != "not-supported"
+    }
+    assert supported == set(expected_markers), supported.symmetric_difference(expected_markers)
+    for service_id, marker in expected_markers.items():
+        assert marker in surface, service_id
 
 
 def test_reference_notebooks_are_valid_json_with_compilable_code() -> None:

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -7,6 +7,8 @@ name = "gallica-sdk"
 version = "0.2.0.dev0"
 description = "Verified programmable reference and typed Python SDK for public Gallica services"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 keywords = ["gallica", "bnf", "digital-humanities", "iiif", "ocr"]
 classifiers = [
@@ -65,7 +67,19 @@ skip_covered = false
 target-version = "py311"
 line-length = 100
 
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Canonical declarative registries: one record per line is deliberate and keeps
+# the capability/service/evidence tables diffable and greppable.
+"src/gallica/agent.py" = ["E501"]
+"src/gallica/evidence.py" = ["E501"]
+"src/gallica/operational.py" = ["E501"]
+"src/gallica/reference.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
+mypy_path = ["src"]
 packages = ["gallica"]

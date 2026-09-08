@@ -73,9 +73,11 @@ def test_corpus_fetch_writes_manifest_and_resumes(tmp_path: Path) -> None:
     assert len(first.successes) == 2
     assert not first.failures
     assert (tmp_path / "documents" / "bpt6k1" / "metadata.json").is_file()
-    assert (tmp_path / "documents" / "bpt6k1" / "text.txt").read_text(encoding="utf-8") == "Text for bpt6k1"
+    text_path = tmp_path / "documents" / "bpt6k1" / "text.txt"
+    assert text_path.read_text(encoding="utf-8") == "Text for bpt6k1"
 
-    metadata = json.loads((tmp_path / "documents" / "bpt6k1" / "metadata.json").read_text(encoding="utf-8"))
+    metadata_path = tmp_path / "documents" / "bpt6k1" / "metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     assert metadata["fields"]["title"] == ["Title bpt6k1"]
 
     manifest_lines = (tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
@@ -116,8 +118,9 @@ def test_corpus_fetches_explicit_alto_and_images(tmp_path: Path) -> None:
     item = report.successes[0]
     assert len(item.alto_paths) == 2
     assert len(item.image_paths) == 2
-    assert (tmp_path / "documents" / "bpt6k1" / "pages" / "2" / "alto.xml").read_bytes() == b"<alto view='2'/>"
-    assert (tmp_path / "documents" / "bpt6k1" / "pages" / "1" / "image.jpg").read_bytes() == b"JPEG 1 800"
+    pages = tmp_path / "documents" / "bpt6k1" / "pages"
+    assert (pages / "2" / "alto.xml").read_bytes() == b"<alto view='2'/>"
+    assert (pages / "1" / "image.jpg").read_bytes() == b"JPEG 1 800"
     assert gallica.calls == [
         ("bpt6k1", "alto:2"),
         ("bpt6k1", "alto:1"),

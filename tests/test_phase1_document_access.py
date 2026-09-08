@@ -25,25 +25,45 @@ class FakeTransport:
             start_result = normalized.get("startResult") if normalized is not None else None
             query = normalized.get("query") if normalized is not None else None
             if page is not None:
-                xml = """<results countResults="1"><query>hugo</query><items><item score="0.75"><altoid countResults="2"><altoidstring height="47" hpos="514" vpos="915" width="101">PAG_00000173_ST000061</altoidstring><altoidstring height="48" hpos="700" vpos="920" width="110">PAG_00000173_ST000062</altoidstring></altoid><p_id>PAG_173</p_id><p_width>1153</p_width><p_height>2138</p_height><content/></item></items></results>"""
+                xml = (
+                    '<results countResults="1"><query>hugo</query><items>'
+                    '<item score="0.75"><altoid countResults="2">'
+                    '<altoidstring height="47" hpos="514" vpos="915" width="101">'
+                    "PAG_00000173_ST000061</altoidstring>"
+                    '<altoidstring height="48" hpos="700" vpos="920" width="110">'
+                    "PAG_00000173_ST000062</altoidstring></altoid>"
+                    "<p_id>PAG_173</p_id><p_width>1153</p_width>"
+                    "<p_height>2138</p_height><content/></item>"
+                    "</items></results>"
+                )
                 return httpx.Response(200, text=xml, request=request)
             if query == "paginate":
                 start = int(start_result or "1")
                 if start == 1:
                     items = "".join(
-                        f"<item><altoid/><p_id>PAG_{index}</p_id><p_width/><p_height/><content>hit {index}</content></item>"
+                        f"<item><altoid/><p_id>PAG_{index}</p_id>"
+                        f"<p_width/><p_height/><content>hit {index}</content></item>"
                         for index in range(1, 11)
                     )
                 elif start == 11:
                     items = "".join(
-                        f"<item><altoid/><p_id>PAG_{index}</p_id><p_width/><p_height/><content>hit {index}</content></item>"
+                        f"<item><altoid/><p_id>PAG_{index}</p_id>"
+                        f"<p_width/><p_height/><content>hit {index}</content></item>"
                         for index in range(11, 13)
                     )
                 else:
                     items = ""
-                xml = f'<results countResults="12"><query>paginate</query><items>{items}</items></results>'
+                xml = (
+                    '<results countResults="12"><query>paginate</query>'
+                    f"<items>{items}</items></results>"
+                )
                 return httpx.Response(200, text=xml, request=request)
-            xml = """<results countResults="1"><query>hugo</query><items><item score="0.75"><altoid>A1</altoid><p_id>PAG_357</p_id><p_width/><p_height/><content>HUGO</content></item></items></results>"""
+            xml = (
+                '<results countResults="1"><query>hugo</query><items>'
+                '<item score="0.75"><altoid>A1</altoid><p_id>PAG_357</p_id>'
+                "<p_width/><p_height/><content>HUGO</content></item>"
+                "</items></results>"
+            )
             return httpx.Response(200, text=xml, request=request)
         if url.endswith("/services/Issues"):
             xml = b'<issues><issue ark="ark:/12148/bpt6k5509212w" dayOfYear="84"/></issues>'

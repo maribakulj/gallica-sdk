@@ -8,7 +8,9 @@ This repository is a verified programmable reference and thin Python SDK over th
 2. Inspect `Gallica.capabilities()` or run `python scripts/export_capabilities.py` for detailed machine-readable signatures and constraints.
 3. Read `agent/recipes.json` for common compositions.
 4. Use the typed Python API rather than reconstructing Gallica URLs manually when a supported primitive already exists.
-5. Check `evidence_freshness()` when relying on volatile external behavior.
+5. Check `evidence_freshness()` when relying on volatile external behavior. It returns
+   `unknown` unless you pass an attestation downloaded from a CI run — that is expected,
+   not a defect. See `docs/evidence.md`.
 6. Keep `raw_xml` when an advanced use case needs data not yet promoted into typed models.
 7. For corpus work, use `Corpus.fetch(..., resume=True)` rather than writing an independent downloader unless the SDK genuinely lacks the required primitive.
 
@@ -16,7 +18,10 @@ This repository is a verified programmable reference and thin Python SDK over th
 
 - SRU `maximum_records` must be between 1 and 50.
 - `.texteBrut` is throttled by the SDK; do not bypass the shared transport.
-- IIIF images default to 1000 px. Widths above 1000 px use the HD rate bucket.
+- IIIF images default to 1000 px. Widths up to 1000 px use the throttled `iiif` bucket;
+  above 1000 px they use the `iiif_hd` bucket.
+- ALTO uses the throttled `alto` bucket. The `alto`/`iiif` intervals are SDK burst guards,
+  not published BnF quotas.
 - Corpus ALTO/images require explicit `views`.
 - Never reinterpret a missing `views` argument as “all pages”.
 - PDF is not a supported SDK capability. Historical `.pdf` forms returned HTML in public automated validation on 2026-09-02.

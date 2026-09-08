@@ -440,7 +440,9 @@ class Corpus:
                 try:
                     self._fetch_artifact(request, doc)
                     current[request.relative_path] = self._record_for(request)
-                except Exception as exc:  # noqa: BLE001 - per-artifact isolation is the contract
+                except Exception as exc:
+                    # Per-artifact isolation is the documented contract: one bad
+                    # response must not hide artifacts that can still be fetched.
                     failure_details.append(self._failure_for(request, exc))
 
             item = CorpusItemResult(

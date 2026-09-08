@@ -46,7 +46,10 @@ def test_checked_in_reference_validates_against_published_schema() -> None:
     schema = _reference_schema()
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema)
-    errors = sorted(validator.iter_errors(_checked_in_reference()), key=lambda item: list(item.path))
+    errors = sorted(
+        validator.iter_errors(_checked_in_reference()),
+        key=lambda item: list(item.path),
+    )
     assert errors == []
 
 
@@ -79,7 +82,10 @@ def test_service_ids_are_unique_and_statuses_explicit() -> None:
         "environment-limited",
         "not-supported",
     }
-    assert any(service["id"] == "pdf" and service["status"] == "not-supported" for service in services)
+    assert any(
+        service["id"] == "pdf" and service["status"] == "not-supported"
+        for service in services
+    )
     assert any(
         service["id"] == "text" and service["status"] == "environment-limited"
         for service in services
@@ -165,7 +171,10 @@ def test_evidence_targets_exist_in_repository() -> None:
 def test_reference_schema_version_is_v2_0() -> None:
     assert REFERENCE_SCHEMA_VERSION == "2.0"
     reference = programmable_reference()
-    assert reference["operational_contracts_export"] == "python scripts/export_operational_contracts.py"
+    assert (
+        reference["operational_contracts_export"]
+        == "python scripts/export_operational_contracts.py"
+    )
 
     schema = _reference_schema()
     properties = schema["properties"]

@@ -168,6 +168,43 @@ def test_rate_bucket_sleeps_only_for_remaining_interval(monkeypatch: pytest.Monk
     assert sleeps == [8.0]
 
 
+@pytest.mark.parametrize("bucket", ["alto", "iiif", "text", "iiif_hd"])
+def test_bulk_artifact_buckets_are_throttled_by_default(
+    bucket: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Corpus can request ALTO and images in bulk, so they must not burst freely."""
+    ticks = iter([100.0, 100.0, 100.0, 100.0])
+    monkeypatch.setattr("gallica.transport.time.monotonic", lambda: next(ticks))
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="ok", request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    transport = Transport(client=client, sleeper=sleeps.append)
+    transport.get("https://example.test/", bucket=bucket)
+    transport.get("https://example.test/", bucket=bucket)
+
+    assert sleeps and sleeps[0] > 0
+
+
+def test_default_bucket_stays_unthrottled(monkeypatch: pytest.MonkeyPatch) -> None:
+    ticks = iter([100.0, 100.0, 100.0, 100.0])
+    monkeypatch.setattr("gallica.transport.time.monotonic", lambda: next(ticks))
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="ok", request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    transport = Transport(client=client, sleeper=sleeps.append)
+    transport.get("https://example.test/", bucket="default")
+    transport.get("https://example.test/", bucket="default")
+
+    assert sleeps == []
+
+
 def test_transport_constructor_rejects_invalid_settings() -> None:
     with pytest.raises(ValueError, match="timeout"):
         Transport(timeout=0)

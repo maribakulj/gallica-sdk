@@ -11,8 +11,14 @@ import httpx
 from ._version import __version__
 
 _RETRYABLE = {429, 500, 502, 503, 504}
+# "default" carries the light metadata services and stays unthrottled. The
+# artifact paths that Corpus can request in bulk get an explicit floor: BnF
+# publishes no quota for them, so 1.0 s is an SDK-chosen burst guard, not a
+# documented upstream limit.
 _DEFAULT_INTERVALS = {
     "default": 0.0,
+    "alto": 1.0,
+    "iiif": 1.0,
     "text": 12.5,
     "iiif_hd": 12.5,
 }

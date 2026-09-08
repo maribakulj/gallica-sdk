@@ -36,7 +36,13 @@ The project follows semantic versioning once a first public release is published
 - installed CLI smoke checks from both wheel and sdist;
 - installed `py.typed` verification from both wheel and sdist;
 - `twine check` validation for built distributions;
-- CI for Python 3.11 through 3.14, Ruff, mypy strict, coverage, wheel/sdist packaging, Windows/macOS smoke tests and public Gallica smoke tests.
+- CI for Python 3.11 through 3.14, Ruff, mypy strict, coverage, wheel/sdist packaging, Windows/macOS smoke tests and public Gallica smoke tests;
+- explicit MIT license with PEP 639 distribution metadata, shipped in both the wheel and the sdist;
+- dedicated `alto` and `iiif` rate buckets so bulk corpus artifact downloads cannot burst against public services;
+- anti-drift test asserting that every CLI invocation documented in `README.md` and `docs/cli.md` is accepted by the real argument parser;
+- anti-drift tests asserting that no human document describes the shipped CLI as absent, and that `docs/architecture.md` lists every supported network service;
+- test pinning the declared license against the `LICENSE` file;
+- `.gitignore` covering bytecode, build output, tool caches and CI-generated evidence files.
 
 ### Changed
 
@@ -48,7 +54,13 @@ The project follows semantic versioning once a first public release is published
 - package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;
 - programmable reference schema advanced to 2.0 to advertise the operational-contract export;
 - README is now a navigable entry point to task-focused documentation rather than the only user guide;
-- package CI now validates both wheel and source-distribution installation paths.
+- package CI now validates both wheel and source-distribution installation paths;
+- `normalize_ark()` now rejects Gallica URLs that carry no `ark:/12148/` marker instead of silently reducing them to their first path segment, which produced identifiers such as `services` or `blog`;
+- ALTO now uses the throttled `alto` bucket and IIIF images up to 1000 px the throttled `iiif` bucket; only the light metadata services remain unthrottled;
+- Ruff now enables an explicit rule set (`E`, `W`, `F`, `I`, `UP`, `B`, `RUF`) so the configured 100-column limit is actually enforced, with a scoped exemption for the declarative capability/service/evidence registries;
+- mypy configuration now sets `mypy_path` so a bare `mypy` invocation resolves the package instead of failing;
+- documentation now states plainly that evidence attestations are CI artifacts that are never committed, and that `evidence_freshness()` reporting `unknown` without one is the intended behavior;
+- `docs/architecture.md` no longer presents the shipped CLI as a hypothetical addition and now lists Categories, Toc and IIIF Presentation in the current functional surface.
 
 ### Known limitations
 
@@ -56,4 +68,5 @@ The project follows semantic versioning once a first public release is published
 - IIIF Presentation public machine access is currently environment-limited from some cold external runners even though the BnF documents the v2 manifest endpoint;
 - page-level corpus downloads require explicit views and never imply all pages;
 - no MCP, async public API, Parquet/DataFrame export or implicit high-volume concurrency is provided yet;
-- PyPI publication remains intentionally disabled until license, version policy and publishing trust configuration are decided.
+- PyPI publication remains intentionally disabled until version policy and publishing trust configuration are decided;
+- the `alto`/`iiif` throttling intervals are SDK-chosen burst guards, not published BnF quotas; the BnF documents no quota for those services.

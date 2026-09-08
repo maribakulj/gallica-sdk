@@ -61,13 +61,17 @@ La référence programmable est générée depuis la même source canonique que 
 Le SDK couvre notamment :
 
 - recherche SRU et pagination paresseuse ;
+- affinements de recherche via Categories ;
 - métadonnées OAIRecord ;
-- pagination documentaire ;
+- structure documentaire via Pagination ;
+- sommaires Toc, en préservant la distinction HTML hérité / TEI XML ;
 - texte OCR et ContentSearch ;
 - ALTO ;
 - IIIF Image ;
+- manifestes IIIF Presentation, avec détection explicite de la version v2/v3 ;
 - résolution datée de numéros de périodiques via Issues ;
-- corpus reprenable pour métadonnées, texte, ALTO et images sur vues explicites.
+- corpus reprenable pour métadonnées, texte, ALTO et images sur vues explicites ;
+- CLI JSON-first minimale au-dessus des mêmes primitives.
 
 La référence programmable expose en plus :
 
@@ -90,7 +94,9 @@ La référence programmable expose en plus :
 - téléchargement implicite de toutes les vues ;
 - multiplication d'adaptateurs qui dupliquent la logique métier.
 
-Une CLI, une API async ou un MCP ne seront ajoutés que si un cas d'usage concret démontre qu'ils apportent une valeur supérieure à l'interface Python existante.
+Une CLI JSON-first minimale **existe** depuis lors : elle est livrée, testée depuis le wheel et le sdist, et documentée dans [`cli.md`](cli.md). Elle a été acceptée précisément parce qu'elle reste une enveloppe mince sur des primitives publiques déjà testées, sans logique réseau propre.
+
+Une API async ou un MCP ne seront ajoutés que si un cas d'usage concret démontre qu'ils apportent une valeur supérieure à l'interface Python existante.
 
 ## Validation
 
