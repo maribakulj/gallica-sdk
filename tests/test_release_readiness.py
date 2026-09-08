@@ -28,6 +28,15 @@ def test_distribution_version_is_single_installed_truth() -> None:
     assert __version__ == project["version"]
 
 
+def test_release_candidate_has_left_development_versioning() -> None:
+    project = _project_metadata()
+    assert project["version"] == "0.2.0rc1"
+    assert ".dev" not in str(project["version"])
+    classifiers = project["classifiers"]
+    assert isinstance(classifiers, list)
+    assert "Development Status :: 4 - Beta" in classifiers
+
+
 def test_readme_tracks_project_and_reference_versions() -> None:
     project = _project_metadata()
     reference = programmable_reference()
@@ -104,10 +113,32 @@ def test_non_live_coverage_floor_is_enforced_in_ci() -> None:
     assert "pytest -m 'not live' --cov=gallica --cov-report=term-missing" in ci
 
 
+def test_testpypi_boundary_is_explicitly_guarded() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "release-candidate.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "python scripts/validate_release.py --require-release" in workflow
+    assert "publish_testpypi" in workflow
+    assert "github.ref == 'refs/heads/main'" in workflow
+    assert "vars.TESTPYPI_PUBLISH_ENABLED == 'true'" in workflow
+
+    publish_job = workflow.partition("  publish-testpypi:\n")[2]
+    assert publish_job
+    assert "id-token: write" in publish_job
+    assert "environment:\n      name: testpypi" in publish_job
+    assert "actions/download-artifact@" in publish_job
+    assert "pypa/gh-action-pypi-publish@" in publish_job
+    assert "repository-url: https://test.pypi.org/legacy/" in publish_job
+    assert "actions/checkout@" not in publish_job
+    assert "python -m build" not in publish_job
+
+
 def test_release_blockers_are_explicit_not_implicit() -> None:
     checklist = (ROOT / "docs/release-readiness.md").read_text(encoding="utf-8")
     assert "choose and add an explicit open-source license" not in checklist
     assert "Apache License 2.0" in checklist
-    assert "remove the `.dev0` suffix" in checklist
+    assert "0.2.0rc1" in checklist
     assert "TestPyPI" in checklist
     assert "Trusted Publishing" in checklist
+    assert "branch protection" in checklist
+    assert "TESTPYPI_PUBLISH_ENABLED=true" in checklist
