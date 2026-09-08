@@ -31,6 +31,8 @@ The project follows semantic versioning once a first public release is published
 - generated canonical capability sections in `README.md` and `docs/capabilities.md` with a CI anti-drift check;
 - explicit `docs/public-api.md` audit of the intended 0.2 release boundary;
 - deterministic public-API lock tests for root exports, facade call signatures and public result-model fields;
+- Apache License 2.0 repository and PEP 639 package metadata;
+- distribution validation requiring Apache-2.0 metadata and the license file in both wheel and sdist;
 - executable notebooks for search/metadata, resumable corpus workflows, and document structure/IIIF inspection;
 - CI execution of the reference notebooks against public Gallica services;
 - release metadata/tag validator;
@@ -47,6 +49,7 @@ The project follows semantic versioning once a first public release is published
 - live evidence declarations no longer embed historical timestamps, commits or workflow runs; run-specific provenance exists only in generated attestations;
 - human capability documentation is now projected from the canonical capability/service graph instead of maintaining a second hand-written API inventory;
 - the first-release public Python surface has been audited and deliberately frozen before 0.2.0 rather than being treated as an accidental consequence of imports;
+- release validation now treats license agreement between source metadata, wheel and sdist as a hard requirement;
 - `Document.page_count()` is now a projection of the structured `Pagination.image_views` contract rather than a separate XML parsing path;
 - project positioning expanded from a Python-only SDK to a verified programmable reference plus Python SDK;
 - package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;
@@ -60,4 +63,4 @@ The project follows semantic versioning once a first public release is published
 - IIIF Presentation public machine access is currently environment-limited from some cold external runners even though the BnF documents the v2 manifest endpoint;
 - page-level corpus downloads require explicit views and never imply all pages;
 - no MCP, async public API, Parquet/DataFrame export or implicit high-volume concurrency is provided yet;
-- PyPI publication remains intentionally disabled until license, version policy and publishing trust configuration are decided.
+- PyPI publication remains intentionally disabled until version policy, TestPyPI validation and publishing trust configuration are decided.
