@@ -2,9 +2,13 @@
 
 All notable changes to `gallica-sdk` will be documented in this file.
 
-The project follows semantic versioning once a first public release is published. Until then, `0.2.0.dev0` remains a development version and may change before the first tagged release.
+The project follows semantic versioning for public release candidates and releases.
 
 ## Unreleased
+
+No changes yet since `0.2.0rc1`.
+
+## 0.2.0rc1 - 2026-09-08
 
 ### Added
 
@@ -36,7 +40,8 @@ The project follows semantic versioning once a first public release is published
 - executable notebooks for search/metadata, resumable corpus workflows, and document structure/IIIF inspection;
 - CI execution of the reference notebooks against public Gallica services;
 - release metadata/tag validator;
-- non-publishing release-candidate workflow that validates and retains wheel/sdist artifacts;
+- release-candidate workflow that builds and retains validated wheel/sdist artifacts;
+- guarded TestPyPI Trusted Publishing boundary that consumes the exact validated release-candidate artifacts in a separate OIDC-only job;
 - isolated wheel and sdist installation checks with `pip check`;
 - installed CLI smoke checks from both wheel and sdist;
 - installed `py.typed` verification from both wheel and sdist;
@@ -45,6 +50,9 @@ The project follows semantic versioning once a first public release is published
 
 ### Changed
 
+- the package version advanced from `0.2.0.dev0` to the first release candidate, `0.2.0rc1`;
+- release-candidate validation now rejects development versions when run manually;
+- TestPyPI publication is isolated from build machinery, requires GitHub OIDC, a `testpypi` environment, the repository variable `TESTPYPI_PUBLISH_ENABLED=true`, an explicit manual publish input and execution from `main`;
 - CI evidence attestations now require one observation for every declared live test and use schema 2.0 with separate test and service outcomes; legacy schema-1.0 attestations remain readable without being promoted to operational evidence;
 - live evidence declarations no longer embed historical timestamps, commits or workflow runs; run-specific provenance exists only in generated attestations;
 - human capability documentation is now projected from the canonical capability/service graph instead of maintaining a second hand-written API inventory;
@@ -52,10 +60,10 @@ The project follows semantic versioning once a first public release is published
 - release validation now treats license agreement between source metadata, wheel and sdist as a hard requirement;
 - `Document.page_count()` is now a projection of the structured `Pagination.image_views` contract rather than a separate XML parsing path;
 - project positioning expanded from a Python-only SDK to a verified programmable reference plus Python SDK;
-- package version is now exposed as `gallica.__version__` and used in the HTTP `User-Agent`;
+- package version is exposed as `gallica.__version__` and used in the HTTP `User-Agent`;
 - programmable reference schema advanced to 2.0 to advertise the operational-contract export;
-- README is now a navigable entry point to task-focused documentation rather than the only user guide;
-- package CI now validates both wheel and source-distribution installation paths.
+- README is a navigable entry point to task-focused documentation rather than the only user guide;
+- package CI validates both wheel and source-distribution installation paths.
 
 ### Known limitations
 
@@ -63,4 +71,6 @@ The project follows semantic versioning once a first public release is published
 - IIIF Presentation public machine access is currently environment-limited from some cold external runners even though the BnF documents the v2 manifest endpoint;
 - page-level corpus downloads require explicit views and never imply all pages;
 - no MCP, async public API, Parquet/DataFrame export or implicit high-volume concurrency is provided yet;
-- PyPI publication remains intentionally disabled until version policy, TestPyPI validation and publishing trust configuration are decided.
+- `main` still lacks enforced branch protection/rulesets;
+- TestPyPI Trusted Publishing must still be configured externally and the guarded publication path must be exercised successfully before the final release;
+- production PyPI publication remains intentionally disabled until the final release boundary is configured.
